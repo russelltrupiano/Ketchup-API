@@ -1,0 +1,14 @@
+doctype html
+html
+  head
+    title= title
+    link(rel='stylesheet', href='/css/index.min.css')
+    //- For development
+    script(src="//localhost:35729/livereload.js")
+    script(src="/javascripts/index-lib.min.js")
+  body
+    //- Templates will be inserted here.
+    //- The contents of this file wil always be displayed as a wrapper
+    block content
+
+    script(src="javascripts/main.js")

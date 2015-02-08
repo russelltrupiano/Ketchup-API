@@ -1,0 +1,65 @@
+/*
+ * Import nib
+ */
+@import 'nib'
+@import 'rupture'
+@import 'jeet'
+@import 'axis'
+
+/*
+ * Nib provides a CSS reset
+ */
+global-reset()
+
+/*
+ * Store the main color and
+ * background color as variables
+ */
+main-color = #990033
+offwhite = #eeeeee
+
+// screen sizes
+extralarge = 1400px
+large = 1200px
+mediumlarge = 1050px
+medium = 850px
+small = 650px
+extrasmall = 500px
+
+//Font sizes
+
+content-large-title = 4em
+content-title = 3em
+content-large = 1.5em
+content-medlarge = 1.35em
+content-profile = 1.1em
+content-normal = 1em
+content-small = .85em
+content-extrasmall = .6em
+
+bg-size ()
+    -webkit-background-size: arguments;
+    -moz-background-size: arguments;
+    -o-background-size: arguments;
+
+.hidden
+    display none
+    height 0px
+    width 0px
+    height 0px
+    overflow hidden
+
+html
+    height 100%
+
+    section.header-section
+        background main-color
+        height 600px
+
+        div.header-content
+            color offwhite
+            font-size content-large-title
+            align(horizontal)
+            margin-top 300px
+            width 100%
+            text-align center
