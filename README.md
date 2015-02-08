@@ -7,6 +7,9 @@ Backend web server for the [Ketchup mobile application](https://www.github.com/r
 
 ### API Routes 
 
+#####```POST /signup``` 
+Create a new user. Parameters are ```email``` and ```password```
+
 #####```POST /login``` 
 Login the user. Parameters are ```email``` and ```password```
 

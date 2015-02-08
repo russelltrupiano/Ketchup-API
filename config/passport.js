@@ -40,21 +40,27 @@ module.exports = function(passport) {
 
         // asynchronous
         process.nextTick(function() {
+
             User.findOne({ 'local.email' :  email }, function(err, user) {
                 // if there are any errors, return the error
-                if (err)
+
+                if (err) {
                     return done(err);
+                }
 
                 // if no user is found, return the message
-                if (!user)
-                    return done(null, false, req.flash('loginMessage', 'No user found.'));
+                if (!user) {
+                    return done(null, false);
+                }
 
-                if (!user.validPassword(password))
-                    return done(null, false, req.flash('loginMessage', 'Oops! Wrong password.'));
+                if (!user.validPassword(password)) {
+                    return done(null, false);
+                }
 
                 // all is well, return user
-                else
+                else {
                     return done(null, user);
+                }
             });
         });
 
@@ -84,7 +90,7 @@ module.exports = function(passport) {
 
                 // check to see if there's already a user with that email
                 if (existingUser) {
-                    return done(null, false, req.flash('signupMessage', 'That email is already taken.'));
+                    return done(null, false);
                 }
                 //  We're not logged in, so we're creating a brand new user.
                 else {
