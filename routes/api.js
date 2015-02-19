@@ -1,4 +1,14 @@
 var express = require('express');
+var validator = require('validator');
+var request = require('request');
+var htmlencode = require('htmlencode');
+var qs = require('querystring');
+var parseString = require('xml2js').parseString;
+var tvRage = require('../app/services/tvrage');
+
+function sanitizeString(str) {
+    return validator.toString(str);
+}
 
 module.exports = function(app, passport) {
 
@@ -67,6 +77,40 @@ module.exports = function(app, passport) {
     // Callback after google authentication
     router.get('/auth/google/callback', function(req, res) {
 
+    });
+
+    // Search for a show using the TVRage API
+    router.get('/search', function(req, res) {
+
+        var show = sanitizeString(req.query.query);
+        show = htmlencode.htmlEncode(show);
+
+        tvRage.searchShow(show, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.setHeader('content-type', 'text/json');
+            res.send(result);
+        });
+    });
+
+    // Get the info about any show
+    router.get('/shows/:showid', function(req, res) {
+
+        var id = req.params.showid;
+        if (!validator.isInt(id)) {
+            return res.sendStatus(403, "Invalid id")
+        }
+
+        tvRage.getShowInfo(id, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.setHeader('content-type', 'text/json');
+            res.send(result);
+        });
     });
 
     // Get all subscribed shows for a user

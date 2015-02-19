@@ -29,8 +29,19 @@ var jsonSchema = {
         name         : String
     },
 
-    tvShows: [String],
-    episodes: [String],
+    tvShows: [
+        {
+            id: String,
+            title: String,
+            imageUrl: String,
+            episodes: [
+                {
+                    id: String,
+                    title: String
+                }
+            ]
+        }
+    ],
 
     sessionId: String,
     sessionExpires: Date
