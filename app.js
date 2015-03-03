@@ -30,16 +30,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-// app.use(session({
-//     secret: config.SESSION_SECRET_KEY,
-//     resave: false,
-//     saveUninitialized: false,
-//     key: "session",
-//     store: require('mongoose-session')(mongoose, {ttl: 7889230}),
-//     cookie: {
-//         maxAge: 7889230000,
-//     }
-// }));
+app.use(session({
+    secret: config.SESSION_SECRET_KEY,
+    resave: false,
+    saveUninitialized: false,
+    key: "session",
+    store: require('mongoose-session')(mongoose, {ttl: 7889230}),
+    cookie: {
+        maxAge: 7889230000,
+    }
+}));
 
 app.use(passport.initialize());
 app.use(passport.session()); // persistent login sessions

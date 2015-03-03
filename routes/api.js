@@ -1,13 +1,27 @@
+var _ = require('lodash');
 var express = require('express');
-var validator = require('validator');
-var request = require('request');
 var htmlencode = require('htmlencode');
-var qs = require('querystring');
 var parseString = require('xml2js').parseString;
+var request = require('request');
 var tvRage = require('../app/services/tvrage');
+var validator = require('validator');
+
+var User = require('../app/models/user');
 
 function sanitizeString(str) {
     return validator.toString(str);
+}
+
+function authUser(req, res, next) {
+    if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+    }
+
+    if (req.user._id == req.params.user_id) {
+        return next();
+    } else {
+        return res.sendStatus(401);
+    }
 }
 
 module.exports = function(app, passport) {
@@ -28,7 +42,7 @@ module.exports = function(app, passport) {
             }
 
             req.logIn(user, function() {
-                return res.send({status: 200});
+                return res.send({status: 200, authToken: req.user._id});
             });
 
         })(req, res, next);
@@ -39,17 +53,14 @@ module.exports = function(app, passport) {
         passport.authenticate('local-login', function(err, user, info) {
 
             if (err) {
-                console.log(2);
                 return next(err); //500 error
             }
             if (!user) {
-                console.log(3);
-                return res.send({status: 400, message: "User does not exist"});
+                return res.send({status: 400, message: "User doesn't exist"});
             }
 
             req.logIn(user, function() {
-                console.log(4);
-                return res.send({status: 200});
+                return res.send({status: 200, authToken: req.user._id});
             });
 
         })(req, res, next);
@@ -58,7 +69,7 @@ module.exports = function(app, passport) {
     // Logout the user
     router.post('/logout', function(req, res) {
         req.logout();
-        return res.send(200);
+        return res.sendStatus(200);
     });
 
     // Login via facebook
@@ -86,6 +97,7 @@ module.exports = function(app, passport) {
         show = htmlencode.htmlEncode(show);
 
         tvRage.searchShow(show, function(error, result) {
+
             if (error) {
                 return res.sendStatus(503, error);
             }
@@ -139,13 +151,67 @@ module.exports = function(app, passport) {
     });
 
     // Add a show to a user's subscription list. Parameters are show_id
-    router.post('/:user_id/shows', function(req, res) {
+    router.post('/:user_id/shows', authUser, function(req, res) {
 
+        if (!validator.isInt(req.body.show_id)) {
+            console.log("Bad show id");
+            return res.sendStatus(400, "Invalid show_id");
+        }
+
+        var showId = validator.toInt(req.body.show_id);
+        var userId = req.params.user_id;
+
+        tvRage.getShowInfo(showId, function(error, result) {
+
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            User.findById(userId, function(err, user) {
+                if (_.findIndex(user.tvShows, {'id': showId}) != -1) {
+                    // Show has already been subscribed to
+                    console.log("Show is already subscribed to");
+                    return res.sendStatus(200);
+                }
+
+                user.tvShows.push({
+                    id: showId,
+                    title: result.name,
+                    imageUrl: '',
+                    episodes: []
+                });
+
+                console.log("updated user data");
+
+                user.save(function(err) {
+                    if (err)
+                        res.sendStatus(503, error);
+
+                    console.log("saved user data");
+                    return res.sendStatus(200);
+                });
+            });
+        });
     });
 
     // Add an episode to the user's unwatched queue. Parameters are episode_id
     router.post('/:user_id/episodes', function(req, res) {
+        User.findById("54f52289e8decb1728e371cd", function(err, user) {
 
+            var index = _.findIndex(user.tvShows, {'id': "3778"});
+            console.log("Adding to show at index " + index);
+            user.tvShows[index].episodes.push({
+                id: "54321",
+                title: "Felina"
+            });
+
+            user.save(function(err) {
+                if (err)
+                    throw err;
+
+                res.sendStatus(200);
+            });
+        });
     });
 
     return router;

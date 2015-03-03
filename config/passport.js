@@ -59,6 +59,7 @@ module.exports = function(passport) {
 
                 // all is well, return user
                 else {
+                    console.log("Logging in, yo");
                     return done(null, user);
                 }
             });
@@ -76,7 +77,6 @@ module.exports = function(passport) {
         passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
     },
     function(req, email, password, done) {
-
         // asynchronous
         process.nextTick(function() {
 
@@ -85,11 +85,14 @@ module.exports = function(passport) {
             User.findOne({'local.email': email}, function(err, existingUser) {
 
                 // if there are any errors, return the error
-                if (err)
+                if (err) {
+                    console.log("Error: " + err);
                     return done(err);
+                }
 
                 // check to see if there's already a user with that email
                 if (existingUser) {
+                    console.log("Error: User already exists");
                     return done(null, false);
                 }
                 //  We're not logged in, so we're creating a brand new user.
