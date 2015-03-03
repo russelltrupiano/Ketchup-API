@@ -139,8 +139,13 @@ module.exports = function(app, passport) {
     });
 
     // Get all subscribed shows for a user
-    router.get('/:user_id/shows', function(req, res) {
+    router.get('/:user_id/shows', authUser, function(req, res) {
+        var userId = req.params.user_id;
 
+        User.findById(userId, function(err, user) {
+            res.setHeader('content-type', 'text/json');
+            return res.send(user.tvShows);
+        });
     });
 
     // Get a particular subscribed show for a user
