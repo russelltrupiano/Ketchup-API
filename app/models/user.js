@@ -36,8 +36,10 @@ var jsonSchema = {
             imageUrl: String,
             episodes: [
                 {
-                    id: String,
-                    title: String
+                    title: String,
+                    season: Number,
+                    episodeNumber: Number,
+                    airdate: String
                 }
             ]
         }

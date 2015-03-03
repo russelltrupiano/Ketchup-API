@@ -53,10 +53,32 @@ function filterShows(results, maxShows) {
 }
 
 // Takes a JSON results object and strips uneccessary data
-function filterShow(results, maxShows) {
+function filterShow(results) {
 
     console.log(results.Showinfo);
     return ShowResult(results.Showinfo);
+}
+
+// Filter out only the data we care about
+function EpisodeSearchResult(data) {
+    var episodeSearchResult = {
+        title: data.title,
+        airdate: data.airdate,
+        season: deconstructSeasonEpisodeString(data.number.toString())[0],
+        episodeNumber: deconstructSeasonEpisodeString(data.number.toString())[1],
+    }
+
+    return episodeSearchResult;
+}
+
+function deconstructSeasonEpisodeString(str) {
+    return str.split('x');
+}
+
+function filterEpisode(result) {
+
+    console.log(result.show.episode);
+    return EpisodeSearchResult(result.show.episode[0]);
 }
 
 exports.searchShow = function(query, cb) {
@@ -90,7 +112,27 @@ exports.getShowInfo = function(id, cb) {
                 if (err) {
                     return cb("Internal server error", null);
                 }
-                return cb(null, filterShow(result, 8));
+                return cb(null, filterShow(result));
+            });
+
+        } else {
+            return cb("Internal server error", null);
+        }
+    });
+}
+
+exports.getEpisodeInfo = function(id, season, episode_number, cb) {
+    var url = "http://services.tvrage.com/feeds/episodeinfo.php?sid=" + id + "&ep=" + season + "x" + episode_number;
+    console.log(url);
+
+    request(url, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            // JSON
+            parseString(response.body, function(err, result) {
+                if (err) {
+                    return cb("Internal server error", null);
+                }
+                return cb(null, filterEpisode(result));
             });
 
         } else {
