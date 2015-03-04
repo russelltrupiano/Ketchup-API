@@ -31,6 +31,7 @@
     "express": "~4.10.6",
     "express-session": "~1.8.2",
     "grunt-cli": "~0.1.13",
+    "htmlencode": "0.0.4",
     "jade": "~1.8.2",
     "jeet": "~6.1.2",
     "lodash": "~2.4.1",
@@ -44,13 +45,12 @@
     "passport-facebook": "~1.0.3",
     "passport-google-oauth": "~0.1.5",
     "passport-local": "~1.0.0",
+    "querystring": "~0.2.0",
+    "request": "~2.53.0",
     "rupture": "~0.6.1",
     "serve-favicon": "~2.2.0",
     "stylus": "0.42.3",
     "validator": "~3.30.0",
-    "request": "~2.53.0",
-    "htmlencode": "0.0.4",
-    "querystring": "~0.2.0",
     "xml2js": "~0.4.5"
   }
 }
