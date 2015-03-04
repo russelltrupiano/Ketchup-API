@@ -1,9 +1,9 @@
 Ketchup-API
 =================
 
-The Ketchup API makes heavy use of the [TMDB API](https://www.themoviedb.org/documentation/api) when using show and episode ids.
+The Ketchup API makes heavy use of the [TVRage API](http://services.tvrage.com/info.php?page=main) when using show and episode ids.
 
-Backend web server for the [Ketchup mobile application](https://www.github.com/russelltrupiano/Ketchup). The base url for all requests are http://www.ketchuptv.com/api/v1
+Backend web server for the [Ketchup mobile application](https://www.github.com/russelltrupiano/Ketchup). The base url for all requests are http://www.ketchuptv.me/api/v1
 
 ### API Routes 
 
