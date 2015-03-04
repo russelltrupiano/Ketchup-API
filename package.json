@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "setup": "npm install; npm start",
-    "prepublish": "killall grunt; grunt compile; grunt watch&",
-    "start": "npm run-script prepublish; nodemon bin/www"
+    "prepublish": "grunt compile;",
+    "prepublishDev": "killall grunt; grunt compile; grunt watch&",
+    "start": "npm run-script prepublish; node bin/www",
+    "startDev": "npm run-script prepublishDev; nodemon bin/www",
   },
   "devDependencies": {
     "grunt": "~0.4.5",
