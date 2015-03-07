@@ -28,6 +28,7 @@ var jsonSchema = {
             id: String,
             title: String,
             imageUrl: String,
+            link: String,
             episodes: [
                 {
                     title: String,

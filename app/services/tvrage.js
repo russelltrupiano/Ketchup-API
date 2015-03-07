@@ -11,7 +11,8 @@ function ShowSearchResult(data) {
         name: data.name,
         runtime: data.runtime,
         showid: data.showid,
-        status: data.status
+        status: data.status,
+        link: data.showlink
     }
 
     return showSearchResult;
@@ -21,6 +22,7 @@ function ShowSearchResult(data) {
 function ShowResult(data) {
     var showSearchResult = ShowSearchResult(data);
     showSearchResult.name = data.showname;
+    console.log(showSearchResult);
     return showSearchResult;
 }
 

@@ -4,9 +4,12 @@ var htmlencode = require('htmlencode');
 var parseString = require('xml2js').parseString;
 var request = require('request');
 var tvRage = require('../app/services/tvrage');
+var scraper = require('../app/services/scraper');
 var validator = require('validator');
+var sync = require('sync');
 
 var User = require('../app/models/user');
+var ImageCache = require('../app/models/imagecache');
 
 function sanitizeString(str) {
     return validator.toString(str);
@@ -36,6 +39,8 @@ function authUser(req, res, next) {
         return res.sendStatus(401);
     }
 }
+
+
 
 module.exports = function(app, passport) {
 
@@ -168,6 +173,12 @@ module.exports = function(app, passport) {
 
     });
 
+    router.get('/test', function(req, res) {
+        scraper.scrapeForImage({link: 'http://www.tvrage.com/better-call-saul'}, function(err, result) {
+            return res.send('<img src=\'' + result + '\'>');
+        });
+    });
+
     // Add a show to a user's subscription list. Parameters are show_id
     router.post('/:user_id/shows', authUser, function(req, res) {
 
@@ -183,27 +194,87 @@ module.exports = function(app, passport) {
             }
 
             User.findById(userId, function(err, user) {
-                if (_.findIndex(user.tvShows, {'id': showId}) != -1) {
+
+                if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
                     // Show has already been subscribed to
                     console.log("Show is already subscribed to");
                     return res.sendStatus(200);
                 }
 
-                user.tvShows.push({
-                    id: showId,
-                    title: result.name,
-                    imageUrl: '',
-                    episodes: []
-                });
+                // Load show image
+                ImageCache.findOne({'showId': showId}, function(err, show) {
+                    if (err) {
+                        return res.sendStatus(503, error);
+                    }
 
-                console.log("updated user data");
+                    var url = '';
 
-                user.save(function(err) {
-                    if (err)
-                        res.sendStatus(503, error);
 
-                    console.log("saved user data");
-                    return res.sendStatus(200);
+                    if (show) {
+
+                        console.log("IMAGE IS CACHED: " + show.imageUrl);
+                        url = show.imageUrl;
+
+                        user.tvShows.push({
+                            id: showId,
+                            title: result.name,
+                            imageUrl: url,
+                            episodes: [],
+                            link: result.showlink
+                        });
+
+                        console.log("updated user data");
+
+                        user.save(function(err) {
+                            if (err)
+                                res.sendStatus(503, error);
+
+                            console.log("saved user data");
+                            return res.sendStatus(200);
+                        });
+                    // Not in cache, so scrape for image
+                    } else {
+
+                        var newShow = new ImageCache();
+
+                        console.log("INTO THE WATERFALL");
+
+                        sync(function() {
+                            scraper.scrapeForImage({link: result.link}, function(error, resultUrl) {
+
+                                console.log("New Show Image: " + showId + " - " + resultUrl);
+
+                                newShow.showId = showId;
+                                newShow.imageUrl = resultUrl;
+
+                                newShow.save(function(err) {
+                                    if (err)
+                                        res.sendStatus(503, error);
+
+                                    console.log("Saved image to cache");
+                                    url = resultUrl;
+
+                                    user.tvShows.push({
+                                        id: showId,
+                                        title: result.name,
+                                        imageUrl: url,
+                                        episodes: [],
+                                        link: result.showlink
+                                    });
+
+                                    console.log("updated user data");
+
+                                    user.save(function(err) {
+                                        if (err)
+                                            res.sendStatus(503, error);
+
+                                        console.log("saved user data");
+                                        return res.sendStatus(200);
+                                    });
+                                });
+                            });
+                        });
+                    }
                 });
             });
         });
