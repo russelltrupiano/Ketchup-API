@@ -59,7 +59,6 @@ module.exports = function(passport) {
 
                 // all is well, return user
                 else {
-                    console.log("Logging in, yo");
                     return done(null, user);
                 }
             });

@@ -87,7 +87,7 @@ module.exports = function(app, passport) {
     // Logout the user
     router.post('/logout', function(req, res) {
         req.logout();
-        return res.sendStatus(200);
+        return res.send({status: 200});
     });
 
     // Login via facebook
