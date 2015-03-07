@@ -26,15 +26,20 @@ var jsonSchema = {
     tvShows: [
         {
             id: String,
-            title: String,
+            airday: String,
+            airtime: String,
+            ended: String,
             imageUrl: String,
             link: String,
+            runtime: String,
+            status: String,
+            title: String,
             episodes: [
                 {
-                    title: String,
-                    season: Number,
+                    airdate: String,
                     episodeNumber: Number,
-                    airdate: String
+                    season: Number,
+                    title: String
                 }
             ]
         }

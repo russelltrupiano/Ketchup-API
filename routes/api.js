@@ -60,7 +60,7 @@ module.exports = function(app, passport) {
             }
 
             req.logIn(user, function() {
-                return res.send({status: 200, authToken: req.user._id});
+                return res.send({status: 200, authToken: req.user._id, email: req.user.local.email});
             });
 
         })(req, res, next);
@@ -78,7 +78,7 @@ module.exports = function(app, passport) {
             }
 
             req.logIn(user, function() {
-                return res.send({status: 200, authToken: req.user._id});
+                return res.send({status: 200, authToken: req.user._id, email: req.user.local.email});
             });
 
         })(req, res, next);
@@ -193,6 +193,8 @@ module.exports = function(app, passport) {
                 return res.sendStatus(503, error);
             }
 
+            console.log("RESULT: \n" + JSON.stringify(result));
+
             User.findById(userId, function(err, user) {
 
                 if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
@@ -217,17 +219,22 @@ module.exports = function(app, passport) {
 
                         user.tvShows.push({
                             id: showId,
-                            title: result.name,
+                            airday: result.airday,
+                            airtime: result.airtime,
+                            ended: result.ended,
                             imageUrl: url,
-                            episodes: [],
-                            link: result.showlink
+                            link: result.showlink,
+                            runtime: result.runtime,
+                            status: result.status,
+                            title: result.name,
+                            episodes: []
                         });
 
                         console.log("updated user data");
 
                         user.save(function(err) {
                             if (err)
-                                res.sendStatus(503, error);
+                                return res.sendStatus(503, error);
 
                             console.log("saved user data");
                             return res.sendStatus(200);
@@ -256,17 +263,24 @@ module.exports = function(app, passport) {
 
                                     user.tvShows.push({
                                         id: showId,
-                                        title: result.name,
+                                        airday: result.airday,
+                                        airtime: result.airtime,
+                                        ended: result.ended,
                                         imageUrl: url,
-                                        episodes: [],
-                                        link: result.showlink
+                                        link: result.showlink,
+                                        runtime: result.runtime,
+                                        status: result.status,
+                                        title: result.name,
+                                        episodes: []
                                     });
 
                                     console.log("updated user data");
 
                                     user.save(function(err) {
-                                        if (err)
-                                            res.sendStatus(503, error);
+                                        if (err) {
+                                            console.log ("SOMETHING WENT WRONG: " + err);
+                                            return res.sendStatus(503, err);
+                                        }
 
                                         console.log("saved user data");
                                         return res.sendStatus(200);
