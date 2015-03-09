@@ -34,6 +34,7 @@ var jsonSchema = {
             runtime: String,
             status: String,
             title: String,
+            network: String,
             episodes: [
                 {
                     airdate: String,

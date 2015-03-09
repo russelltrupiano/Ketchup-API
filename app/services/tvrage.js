@@ -12,7 +12,8 @@ function ShowSearchResult(data) {
         runtime: data.runtime,
         showid: data.showid,
         status: data.status,
-        link: data.showlink
+        link: data.showlink,
+        network: data.network[0]["_"]
     }
 
     return showSearchResult;
@@ -92,12 +93,14 @@ exports.searchShow = function(query, cb) {
             // JSON
             parseString(response.body, function(err, result) {
                 if (err) {
+                    console.log("tvrage.js: parsing went wrong");
                     return cb("Internal server error", null);
                 }
                 return cb(null, filterShows(result, 8));
             });
 
         } else {
+            console.log("tvrage.js: request went wrong");
             return cb("Internal server error", null);
         }
     });

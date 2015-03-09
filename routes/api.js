@@ -117,6 +117,7 @@ module.exports = function(app, passport) {
         tvRage.searchShow(show, function(error, result) {
 
             if (error) {
+                console.log("api.js: " + error);
                 return res.sendStatus(503, error);
             }
 
