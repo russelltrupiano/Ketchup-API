@@ -13,7 +13,7 @@ function ShowSearchResult(data) {
         showid: data.showid,
         status: data.status,
         link: data.showlink,
-        network: data.network[0]["_"]
+        network: data.network ? data.network[0]["_"] : data.network
     }
 
     return showSearchResult;
@@ -26,7 +26,6 @@ function ShowResult(data) {
     console.log(showSearchResult);
     return showSearchResult;
 }
-
 
 // Takes a JSON results object and strips uneccessary data
 function filterShows(results, maxShows) {
@@ -100,7 +99,7 @@ exports.searchShow = function(query, cb) {
             });
 
         } else {
-            console.log("tvrage.js: request went wrong");
+            console.log("tvrage.js: request went wrong. " + error);
             return cb("Internal server error", null);
         }
     });

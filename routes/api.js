@@ -145,12 +145,12 @@ module.exports = function(app, passport) {
     });
 
     // Get all subscribed shows for a user
-    router.get('/:user_id/shows', authUser, function(req, res) {
+    router.get('/:user_id/shows', /*authUser,*/ function(req, res) {
         var userId = req.params.user_id;
 
         User.findById(userId, function(err, user) {
             res.setHeader('content-type', 'text/json');
-            return res.send(user.tvShows);
+            return res.send({"shows": user.tvShows});
         });
     });
 
@@ -181,7 +181,7 @@ module.exports = function(app, passport) {
     });
 
     // Add a show to a user's subscription list. Parameters are show_id
-    router.post('/:user_id/shows', authUser, function(req, res) {
+    router.post('/:user_id/subscribe', /*authUser,*/ function(req, res) {
 
         validateIntegerBodyParams(res, [req.body.show_id]);
 
@@ -201,7 +201,7 @@ module.exports = function(app, passport) {
                 if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
                     // Show has already been subscribed to
                     console.log("Show is already subscribed to");
-                    return res.sendStatus(200);
+                    return res.send({status: 200});
                 }
 
                 // Load show image
@@ -238,14 +238,12 @@ module.exports = function(app, passport) {
                                 return res.sendStatus(503, error);
 
                             console.log("saved user data");
-                            return res.sendStatus(200);
+                            return res.send({status: 200});
                         });
                     // Not in cache, so scrape for image
                     } else {
 
                         var newShow = new ImageCache();
-
-                        console.log("INTO THE WATERFALL");
 
                         sync(function() {
                             scraper.scrapeForImage({link: result.link}, function(error, resultUrl) {
@@ -284,7 +282,7 @@ module.exports = function(app, passport) {
                                         }
 
                                         console.log("saved user data");
-                                        return res.sendStatus(200);
+                                        return res.send({status: 200});
                                     });
                                 });
                             });
@@ -328,7 +326,7 @@ module.exports = function(app, passport) {
                     if (err)
                         throw err;
 
-                    res.sendStatus(200);
+                    return res.send({status: 200});
                 });
             });
         });
