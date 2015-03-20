@@ -131,7 +131,7 @@ module.exports = function(app, passport) {
 
         var id = req.params.showid;
         if (!validator.isInt(id)) {
-            return res.sendStatus(403, "Invalid id")
+            return res.sendStatus(403, "Invalid id");
         }
 
         tvRage.getShowInfo(id, function(error, result) {
@@ -333,4 +333,4 @@ module.exports = function(app, passport) {
     });
 
     return router;
-}
+};
