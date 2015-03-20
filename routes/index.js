@@ -1,6 +1,7 @@
 var express = require('express');
 var request = require('request');
 var router = express.Router();
+var auth = require('../config/auth');
 
 /* GET home page. */
 router.get('/', function(req, res) {
@@ -15,10 +16,10 @@ router.post('/push', function(req, res) {
         uri: 'https://android.googleapis.com/gcm/send',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization':'key=AIzaSyB02WmKTofeXRyaVpXnN8EhhAFoenOtb0s'
+            'Authorization':'key=' + auth.googleCloudMessagingId
         },
         body: JSON.stringify({
-            "registration_ids" : ["APA91bFojtpH4upZ7uIXXGwBhkh5Psp7IGoAGYWzfxt1YM0OLILb_rFF6t8c8yCFORfR8p553svLxmU9xywadnYraTxhCRmMpAPFKYZZDs8gZWKSllqSs8SEx7Vp6ZXnS4Pm3cSQ-uDto01IzuCxm_FysVxL3ESQEw"],
+            "registration_ids" : [auth.applicationRegId],
             'data': {
                 'message': text
             }
