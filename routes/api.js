@@ -201,7 +201,7 @@ module.exports = function(app, passport) {
                 if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
                     // Show has already been subscribed to
                     console.log("Show is already subscribed to");
-                    return res.send({status: 200});
+                    return res.send({status: 200, title: [""]});
                 }
 
                 // Load show image
@@ -239,7 +239,7 @@ module.exports = function(app, passport) {
                                 return res.sendStatus(503, error);
 
                             console.log("saved user data");
-                            return res.send({status: 200});
+                            return res.send({status: 200, title: result.name});
                         });
                     // Not in cache, so scrape for image
                     } else {
@@ -271,6 +271,7 @@ module.exports = function(app, passport) {
                                         runtime: result.runtime,
                                         status: result.status,
                                         title: result.name,
+                                        network: result.network,
                                         episodes: []
                                     });
 
@@ -283,7 +284,7 @@ module.exports = function(app, passport) {
                                         }
 
                                         console.log("saved user data");
-                                        return res.send({status: 200});
+                                        return res.send({status: 200, title: result.name});
                                     });
                                 });
                             });
