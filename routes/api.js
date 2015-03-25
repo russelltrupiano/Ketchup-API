@@ -228,6 +228,7 @@ module.exports = function(app, passport) {
                             runtime: result.runtime,
                             status: result.status,
                             title: result.name,
+                            network: result.network,
                             episodes: []
                         });
 
@@ -294,42 +295,114 @@ module.exports = function(app, passport) {
     });
 
     // Add an episode to the user's unwatched queue. Parameters are show_id, season, episode_number
-    router.post('/:user_id/episodes', authUser, function(req, res) {
+    // router.post('/:user_id/episodes', authUser, function(req, res) {
 
-        validateIntegerBodyParams(res, [req.body.show_id, req.body.season, req.body.episode_number]);
+    //     validateIntegerBodyParams(res, [req.body.show_id, req.body.season, req.body.episode_number]);
+
+    //     var userId = req.params.user_id;
+    //     var episodeNumber = validator.toInt(req.body.episode_number);
+    //     var seasonNumber = validator.toInt(req.body.season);
+    //     var showId = req.body.show_id;
+
+    //     console.log(episodeNumber, seasonNumber);
+
+    //     tvRage.getEpisodeInfo(showId, seasonNumber, episodeNumber, function(error, result) {
+
+    //         if (error) {
+    //             return res.sendStatus(503, error);
+    //         }
+
+    //         User.findById(userId, function(err, user) {
+
+    //             var index = _.findIndex(user.tvShows, {'id': showId});
+
+    //             user.tvShows[index].episodes.push({
+    //                 title: result.title,
+    //                 season: result.season,
+    //                 episodeNumber: result.episodeNumber,
+    //                 airdate: result.airdate
+    //             });
+
+    //             user.save(function(err) {
+    //                 if (err)
+    //                     throw err;
+
+    //                 return res.send({status: 200});
+    //             });
+    //         });
+    //     });
+    // });
+
+    router.post('/:user_id/unsubscribe', /*authUser,*/ function(req, res) {
+        validateIntegerBodyParams(res, [req.body.show_id]);
 
         var userId = req.params.user_id;
-        var episodeNumber = validator.toInt(req.body.episode_number);
-        var seasonNumber = validator.toInt(req.body.season);
         var showId = req.body.show_id;
 
-        console.log(episodeNumber, seasonNumber);
+        console.log("Unsubscribing from id " + showId);
 
-        tvRage.getEpisodeInfo(showId, seasonNumber, episodeNumber, function(error, result) {
+        User.findById(userId, function(err, user) {
 
-            if (error) {
-                return res.sendStatus(503, error);
-            }
+            var index = _.findIndex(user.tvShows, {'id': showId.toString()});
 
-            User.findById(userId, function(err, user) {
+            console.log("Deleting from index " + index);
 
-                var index = _.findIndex(user.tvShows, {'id': showId});
+            var theRemoved = user.tvShows.splice(index, 1);
 
-                user.tvShows[index].episodes.push({
-                    title: result.title,
-                    season: result.season,
-                    episodeNumber: result.episodeNumber,
-                    airdate: result.airdate
-                });
+            user.save(function(err) {
+                if (err) {
+                    throw err;
+                }
 
-                user.save(function(err) {
-                    if (err)
-                        throw err;
-
-                    return res.send({status: 200});
-                });
+                return res.send({status: 200});
             });
+
         });
+    });
+
+    /*
+    body content in the form of
+
+    {
+        "shows": [
+            {
+                "id": String,
+                "episodes": [
+                    "season": Number,
+                    "episode_number": Number,
+                    "watched": Boolean
+                ]
+            }
+        ]
+    }
+
+    Example:
+
+    {
+
+        "shows": [
+            {
+                "id": 37780,
+                "episodes": [
+                    {
+                        "season": 1,
+                        "episode_number": 8,
+                        "watched": false
+                    }
+
+                ]
+            }
+        ]
+    }
+
+
+     */
+    router.post('/:user_id/episodes', /*authUser,*/ function(req, res) {
+
+        var episodeData = req.body.shows;
+
+        return res.send({"shows": JSON.parse(episodeData)});
+
     });
 
     return router;

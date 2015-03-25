@@ -81,5 +81,7 @@ app.use(function(err, req, res, next) {
     });
 });
 
+var scheduler = require('./app/services/scheduler');
+// scheduler.start();
 
 module.exports = app;

@@ -2,6 +2,7 @@ var express = require('express');
 var request = require('request');
 var router = express.Router();
 var auth = require('../config/auth');
+var notificationManager = require('../app/services/notifications');
 
 /* GET home page. */
 router.get('/', function(req, res) {
@@ -9,25 +10,10 @@ router.get('/', function(req, res) {
 });
 
 router.post('/push', function(req, res) {
-    var text = req.body.message;
+    var title = req.body.title;
+    var message = req.body.message;
 
-    request({
-        method: 'POST',
-        uri: 'https://android.googleapis.com/gcm/send',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization':'key=' + auth.googleCloudMessagingId
-        },
-        body: JSON.stringify({
-            "registration_ids" : [auth.applicationRegId],
-            'data': {
-                'message': text
-            }
-        })
-    },
-    function(error, response, body) {
-        console.log({'response': "Success"});
-    });
+    notificationManager.sendPushNotification(title, message);
 
     res.sendStatus(200);
 });

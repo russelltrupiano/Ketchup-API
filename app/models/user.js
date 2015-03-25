@@ -40,7 +40,8 @@ var jsonSchema = {
                     airdate: String,
                     episodeNumber: Number,
                     season: Number,
-                    title: String
+                    title: String,
+                    watched: Boolean
                 }
             ]
         }
