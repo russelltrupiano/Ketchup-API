@@ -349,13 +349,14 @@ module.exports = function(app, passport) {
             console.log("Deleting from index " + index);
 
             var theRemoved = user.tvShows.splice(index, 1);
+            var removedTitle = theRemoved[0].title;
+            console.log("api.js: unsubscribing from " + removedTitle + "\n");
 
             user.save(function(err) {
                 if (err) {
                     throw err;
                 }
-
-                return res.send({status: 200});
+                return res.send({status: 200, title: [removedTitle]});
             });
 
         });
