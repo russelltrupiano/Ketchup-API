@@ -41,7 +41,85 @@ function authUser(req, res, next) {
     }
 }
 
+// This function should be able to do imitial import as well as
+// incrementally add shows as the show object is updated
+function importShowEpisodes(userId, showId, res, cb) {
+    tvRage.getAllEpisodesForShow(showId, function(error, seasonEpisodeArr) {
+        console.log("1");
+        if (error) {
+            return res.sendStatus(503, error);
+        }
+        User.findById(userId, function(err, user) {
 
+            console.log("2");
+            if (err) {
+                console.log("2.1");
+                return res.sendStatus(503, err);
+            } else if (!user) {
+                console.log("2.2");
+                return res.sendStatus(503, "No user found");
+            }
+
+            var index = _.findIndex(user.tvShows, {'id': showId.toString()});
+            // This shouldn't ever really happen
+            if (index === -1) {
+                return;
+            }
+
+            console.log("3");
+            // Iterate through each season
+            for (var i = 1; i <= seasonEpisodeArr.length; i++) {
+                // Iterate over every episode for that season
+                // i is the season index, j is the episode index
+                var seasonEpisodes = seasonEpisodeArr[i-1].episode;
+                for (var j = 1; j <= seasonEpisodes.length; j++) {
+
+                    var epData = filterEpisodeData(i, j, seasonEpisodes[j-1]);
+
+                    // Check if result is in episode array
+                    if (!isEpisodeAdded(user.tvShows[index].episodes, epData)) {
+                        user.tvShows[index].episodes.push(epData);
+                    }
+                }
+            }
+
+            console.log("4");
+            user.save(function(err) {
+                if (err) {
+                    return res.sendStatus(503, err);
+                }
+                cb();
+            });
+        });
+    });
+}
+
+function filterEpisodeData(season, episodenum, xmlToJsonEpisodeData) {
+    return {
+        airdate: parseDataIfArray(xmlToJsonEpisodeData.airdate),
+        episodeNumber: episodenum,
+        season: season,
+        title: parseDataIfArray(xmlToJsonEpisodeData.title),
+        watched: false
+    };
+}
+
+function parseDataIfArray(arr) {
+    if (_.isArray(arr)) {
+        return arr[0];
+    } else {
+        return arr;
+    }
+}
+
+function isEpisodeAdded(episodesArr, jsonResult) {
+    var idx = _.findIndex(episodesArr, function(episode) {
+        return  episode.season === jsonResult.season &&
+                episode.episodeNumber === jsonResult.episodeNumber;
+    });
+    console.log("Checking if present: " + idx);
+    return idx !== -1;
+}
 
 module.exports = function(app, passport) {
 
@@ -161,8 +239,44 @@ module.exports = function(app, passport) {
     });
 
     // Get all episodes for a subscribed show for a user
-    router.get('/:user_id/shows/:show_id/episodes', function(req, res) {
+    router.get('/:user_id/shows/:show_id/episodes', /*authUser,*/ function(req, res) {
 
+        validateIntegerBodyParams(res, [req.params.show_id]);
+
+        var showId = validator.toInt(req.params.show_id);
+        var filterUnwatched = validator.toBoolean(req.query.filter_unwatched);
+
+        var userId = req.params.user_id;
+        var episodes = [];
+
+        User.findById(userId, function(err, user) {
+            if (err) {
+                return res.sendStatus(503, err);
+            } else if (!user) {
+                return res.sendStatus(503, "No user found");
+            }
+
+            var idx = _.findIndex(user.tvShows, {'id': showId.toString()});
+            if (idx == -1) {
+                // Not subscribed to show
+                return res.send({status: 400, episodes: null});
+            }
+
+            // Iterate through every episode
+            for (var i = 0; i < user.tvShows[idx].episodes.length; i++) {
+                console.log(user.tvShows[idx].episodes[i]);
+
+                // Only return unwatched episodes
+                if (filterUnwatched) {
+                    if (!user.tvShows[idx].episodes[i].watched) {
+                        episodes.push(user.tvShows[idx].episodes[i]);
+                    }
+                } else {
+                    episodes.push(user.tvShows[idx].episodes[i]);
+                }
+            }
+            return res.send({status: 200, episodes: episodes});
+        });
     });
 
     // Get a particular episode from a subscribed show for a user
@@ -171,8 +285,30 @@ module.exports = function(app, passport) {
     });
 
     // Get all unwatched episodes for a user
-    router.get('/:user_id/episodes', function(req, res) {
+    router.get('/:user_id/unwatched', function(req, res) {
+        var userId = req.params.user_id;
+        var episodes = [];
 
+        User.findById(userId, function(err, user) {
+            if (err) {
+                return res.sendStatus(503, err);
+            } else if (!user) {
+                return res.sendStatus(503, "No user found");
+            }
+            console.log(user.tvShows);
+            // Iterate through every show
+            for (var i = 0; i < user.tvShows.length; i++) {
+                // Iterate through every episode
+                for (var j = 0; j < user.tvShows[i].episodes.length; j++) {
+                    console.log(user.tvShows[i].episodes[j]);
+                    if (!user.tvShows[i].episodes[j].watched) {
+                        episodes.push(user.tvShows[i].episodes[j]);
+                    }
+                }
+            }
+
+            return res.send({status: 200, episodes: episodes});
+        });
     });
 
     router.get('/test', function(req, res) {
@@ -270,88 +406,19 @@ module.exports = function(app, passport) {
             } else {
                 // import episodes for show
                 console.log("User data updated");
-                importShowEpisodes(userId, showId, res);
+                importShowEpisodes(userId, showId, res, function() {
+                    console.log("Episodes imported");
+                });
             }
         });
     });
 
-    // This function should be able to do imitial import as well as
-    // incrementally add shows as the show object is updated
-    function importShowEpisodes(userId, showId, res) {
-        tvRage.getAllEpisodesForShow(showId, function(error, seasonEpisodeArr) {
-            if (error) {
-                return res.sendStatus(503, error);
-            }
-            User.findById(userId, function(err, user) {
-
-                if (err) {
-                    return res.sendStatus(503, err);
-                } else if (!user) {
-                    return res.sendStatus(503, "No user found");
-                }
-
-                var index = _.findIndex(user.tvShows, {'id': showId.toString()});
-                // This shouldn't ever really happen
-                if (index === -1) {
-                    return;
-                }
-
-                // Iterate through each season
-                for (var i = 1; i <= seasonEpisodeArr.length; i++) {
-                    // Iterate over every episode for that season
-                    // i is the season index, j is the episode index
-                    var seasonEpisodes = seasonEpisodeArr[i-1].episode;
-                    for (var j = 1; j <= seasonEpisodes.length; j++) {
-
-                        var epData = filterEpisodeData(i, j, seasonEpisodes[j-1]);
-
-                        // Check if result is in episode array
-                        if (!isEpisodeAdded(user.tvShows[index].episodes, seasonEpisodes[j-1])) {
-                            user.tvShows[index].episodes.push(epData);
-                        }
-                    }
-                }
-
-                user.save(function(err) {
-                    if (err) {
-                        return res.sendStatus(503, err);
-                    }
-                    console.log("Imported all shows for " + showId);
-                });
-            });
-        });
-    }
-
-    function filterEpisodeData(season, episodenum, xmlToJsonEpisodeData) {
-        return {
-            airdate: parseDataIfArray(xmlToJsonEpisodeData.airdate),
-            episodeNumber: episodenum,
-            season: season,
-            title: parseDataIfArray(xmlToJsonEpisodeData.title),
-            watched: false
-        };
-    }
-
-    function parseDataIfArray(arr) {
-        if (_.isArray(arr)) {
-            return arr[0];
-        } else {
-            return arr;
-        }
-    }
-
-    function isEpisodeAdded(episodesArr, jsonResult) {
-        var idx = _.findIndex(episodesArr, function(episode) {
-            return  episode.season === jsonResult.season &&
-                    episode.episodeNumber === jsonResult.episodeNumber
-        });
-        return idx !== -1
-    }
-
     router.post('/:user_id/episodes/:show_id', /*authUser,*/ function(req, res) {
         var userId = req.params.user_id;
         var showId = req.params.show_id;
-        importShowEpisodes(userId, showId, res);
+        importShowEpisodes(userId, showId, res, function() {
+            res.send({status: 200});
+        });
     });
 
 
@@ -404,6 +471,12 @@ module.exports = function(app, passport) {
 
         User.findById(userId, function(err, user) {
 
+            if (err) {
+                return res.sendStatus(503, err);
+            } else if (!user) {
+                return res.sendStatus(503, "No user found");
+            }
+
             var index = _.findIndex(user.tvShows, {'id': showId.toString()});
 
             console.log("Deleting from index " + index);
@@ -431,7 +504,7 @@ module.exports = function(app, passport) {
                 "id": String,
                 "episodes": [
                     "season": Number,
-                    "episode_number": Number,
+                    "episodeNumber": Number,
                     "watched": Boolean
                 ]
             }
@@ -444,26 +517,69 @@ module.exports = function(app, passport) {
 
         "shows": [
             {
-                "id": 37780,
+                "id": "37780",
                 "episodes": [
                     {
                         "season": 1,
-                        "episode_number": 8,
+                        "episodeNumber": 8,
                         "watched": false
                     }
                 ]
             }
         ]
     }
-
-
      */
     router.post('/:user_id/episodes', /*authUser,*/ function(req, res) {
 
-        var episodeData = req.body.shows;
+        var userId = req.params.user_id;
+        var episodeData = JSON.parse(req.body.shows);
 
-        return res.send({"shows": JSON.parse(episodeData)});
+        User.findById(userId, function(err, user) {
+            if (err) {
+                return res.sendStatus(503, err);
+            } else if (!user) {
+                return res.sendStatus(503, "No user found");
+            }
 
+            // Iterate through each POSTed show
+            for (var i = 0; i < episodeData.shows.length; i++) {
+                var subbedShowIndex = _.findIndex(user.tvShows, {'id': episodeData.shows[i].id.toString()});
+                // Show not found
+                if (subbedShowIndex == -1) {
+                    console.log("Show not found");
+                    break;
+                }
+
+                // Iterate through each episode for that show
+                for (var j = 0; j < episodeData.shows[i].episodes.length; j++) {
+
+                    // console.log(user.tvShows[subbedShowIndex].episodes);
+                    console.log(episodeData.shows[i].episodes[j]);
+                    console.log(episodeData.shows[i].episodes[j].season);
+                    console.log(episodeData.shows[i].episodes[j].episodeNumber);
+
+                    var episodeIndex = _.findIndex(user.tvShows[subbedShowIndex].episodes, {
+                        'season': episodeData.shows[i].episodes[j].season,
+                        'episodeNumber': episodeData.shows[i].episodes[j].episodeNumber
+                    });
+
+                    if (episodeIndex == -1) {
+                        console.log("Episode not found");
+                        break;
+                    }
+
+                    console.log("Updating episode data");
+                    user.tvShows[subbedShowIndex].episodes[episodeIndex].watched = episodeData.shows[i].episodes[j].watched;
+                }
+            }
+
+            user.save(function(err) {
+                if (err) {
+                    return res.sendStatus(503, err);
+                }
+                return res.send({status: 200});
+            });
+        });
     });
 
     return router;
