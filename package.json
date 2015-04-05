@@ -23,6 +23,7 @@
     "grunt-contrib-cssmin": "~0.11.0"
   },
   "dependencies": {
+    "agenda": "~0.6.28",
     "async": "~0.9.0",
     "axis": "~0.3.0",
     "bcrypt-nodejs": "latest",
@@ -49,6 +50,7 @@
     "passport-facebook": "~1.0.3",
     "passport-google-oauth": "~0.1.5",
     "passport-local": "~1.0.0",
+    "q": "~1.2.0",
     "querystring": "~0.2.0",
     "request": "~2.53.0",
     "rupture": "~0.6.1",
@@ -57,7 +59,6 @@
     "sync": "~0.2.5",
     "url": "~0.10.3",
     "validator": "~3.30.0",
-    "xml2js": "~0.4.5",
-    "agenda": "~0.6.28"
+    "xml2js": "~0.4.5"
   }
 }

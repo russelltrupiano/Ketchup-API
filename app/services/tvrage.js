@@ -61,6 +61,12 @@ function filterShow(results) {
     return ShowResult(results.Showinfo);
 }
 
+function filterEpisodeArray(xmlEpisodeArr) {
+    console.log(xmlEpisodeArr);
+    console.log("\n\n----\n\n");
+    console.log(xmlEpisodeArr.Show);
+}
+
 // Filter out only the data we care about
 function EpisodeSearchResult(data) {
     var episodeSearchResult = {
@@ -143,4 +149,23 @@ exports.getEpisodeInfo = function(id, season, episode_number, cb) {
             return cb("Internal server error", null);
         }
     });
+}
+
+exports.getAllEpisodesForShow = function(showId, cb) {
+    var url = "http://services.tvrage.com/feeds/full_show_info.php?sid=" + showId;
+    console.log(url);
+
+    request(url, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            //JSON
+            parseString(response.body, function(err, result) {
+                if (err) {
+                    return cb("Internal server error", null);
+                }
+                return cb(null, filterEpisodeArray(result));
+            });
+        } else {
+            return cb("Internal server error", null);
+        }
+    })
 }

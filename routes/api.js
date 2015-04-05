@@ -7,6 +7,7 @@ var tvRage = require('../app/services/tvrage');
 var scraper = require('../app/services/scraper');
 var validator = require('validator');
 var sync = require('sync');
+var async = require('async');
 
 var User = require('../app/models/user');
 var ImageCache = require('../app/models/imagecache');
@@ -188,112 +189,130 @@ module.exports = function(app, passport) {
         var showId = validator.toInt(req.body.show_id);
         var userId = req.params.user_id;
 
-        tvRage.getShowInfo(showId, function(error, result) {
-
-            if (error) {
-                return res.sendStatus(503, error);
-            }
-
-            console.log("RESULT: \n" + JSON.stringify(result));
-
-            User.findById(userId, function(err, user) {
-
-                if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
-                    // Show has already been subscribed to
-                    console.log("Show is already subscribed to");
-                    return res.send({status: 200, title: [""]});
-                }
-
-                // Load show image
-                ImageCache.findOne({'showId': showId}, function(err, show) {
-                    if (err) {
-                        return res.sendStatus(503, error);
+        async.waterfall([
+            function getShowInfo(cb) {
+                tvRage.getShowInfo(showId, function(err, result) {
+                    cb(err, result);
+                });
+            },
+            function getUser(showData, cb) {
+                User.findById(userId, function(err, user) {
+                    if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
+                        // Show has already been subscribed to
+                        console.log("Show is already subscribed to");
+                        res.send({status: 200, title: ""});
+                    } else {
+                        cb(err, user, showData);
                     }
+                });
+            },
+            function checkImageCache(user, showData, cb) {
+                ImageCache.findOne({'showId': showId}, function(err, show) {
+                    if (err) return cb(err, null, null);
 
                     var url = '';
-
-
-                    if (show) {
-
-                        console.log("IMAGE IS CACHED: " + show.imageUrl);
-                        url = show.imageUrl;
-
-                        user.tvShows.push({
+                    var tvshow = {
                             id: showId,
-                            airday: result.airday,
-                            airtime: result.airtime,
-                            ended: result.ended,
-                            imageUrl: url,
-                            link: result.showlink,
-                            runtime: result.runtime,
-                            status: result.status,
-                            title: result.name,
-                            network: result.network,
+                            airday: showData.airday,
+                            airtime: showData.airtime,
+                            ended: showData.ended,
+                            imageUrl: '',
+                            link: showData.link,
+                            runtime: showData.runtime,
+                            status: showData.status,
+                            title: showData.name,
+                            network: showData.network,
                             episodes: []
-                        });
+                        };
 
-                        console.log("updated user data");
-
-                        user.save(function(err) {
-                            if (err)
-                                return res.sendStatus(503, error);
-
-                            console.log("saved user data");
-                            return res.send({status: 200, title: result.name});
-                        });
-                    // Not in cache, so scrape for image
-                    } else {
-
+                    // The image is cached
+                    if (show) {
+                        tvshow.imageUrl = show.imageUrl;
+                    }
+                    // Scrape for the image and add to cache
+                    else {
                         var newShow = new ImageCache();
 
                         sync(function() {
-                            scraper.scrapeForImage({link: result.link}, function(error, resultUrl) {
-
-                                console.log("New Show Image: " + showId + " - " + resultUrl);
+                            scraper.scrapeForImage({link: showData.link}, function(error, resultUrl) {
 
                                 newShow.showId = showId;
                                 newShow.imageUrl = resultUrl;
 
                                 newShow.save(function(err) {
-                                    if (err)
-                                        res.sendStatus(503, error);
-
-                                    console.log("Saved image to cache");
-                                    url = resultUrl;
-
-                                    user.tvShows.push({
-                                        id: showId,
-                                        airday: result.airday,
-                                        airtime: result.airtime,
-                                        ended: result.ended,
-                                        imageUrl: url,
-                                        link: result.showlink,
-                                        runtime: result.runtime,
-                                        status: result.status,
-                                        title: result.name,
-                                        network: result.network,
-                                        episodes: []
-                                    });
-
-                                    console.log("updated user data");
-
-                                    user.save(function(err) {
-                                        if (err) {
-                                            console.log ("SOMETHING WENT WRONG: " + err);
-                                            return res.sendStatus(503, err);
-                                        }
-
-                                        console.log("saved user data");
-                                        return res.send({status: 200, title: result.name});
-                                    });
+                                    if (err) {
+                                        return cb(err, null, null);
+                                    }
+                                    tvshow.link = newShow.imageUrl;
                                 });
                             });
                         });
+
                     }
+                    cb(null, user, tvshow);
                 });
-            });
+            },
+            function updateUserShowData(user, tvshow, cb) {
+                user.tvShows.push(tvshow);
+                user.save(function(err) {
+                    if (err) {
+                        return cb(err);
+                    }
+                    console.log("Successfully saved user data");
+                    res.send({status: 200, title: tvshow.title[0]});
+                })
+
+            }
+        ], function done(err) {
+            if (err) {
+                console.log("ERROR: " + err);
+            } else {
+                // import episodes for show
+                console.log("User data updated");
+            }
         });
     });
+
+    // This function should be able to do imitial import as well as
+    // incrementally add shows as the show object is updated
+    function importShowEpisodes(user, showId, response) {
+        tvRage.getAllEpisodesForShow(showId, function(error, result) {
+            if (error) {
+                return response.sendStatus(503, error);
+            }
+            response.send({status: 200, response: result});
+            // User.findById(user._id, function(err, user) {
+            //     var index = _.findIndex(user.tvShows, {'id': showId});
+
+            //     for (var i = 0; i < result.length; i++) {
+            //         // Check if result is in episode array
+            //         if (!isEpisodeAdded(user.tvShows[index].episodes, result[i])) {
+            //             user.tvShows[index].episodes.push({
+            //                 airdate: result.airdate,
+            //                 episodeNumber: result.episodeNumber,
+            //                 season: result.season,
+            //                 title: result.title,
+            //                 watched: false
+            //             });
+            //         }
+            //     }
+            // });
+        });
+    }
+
+    function isEpisodeAdded(episodesArr, jsonResult) {
+        return _.findIndex(episodesArr, function(episode) {
+            return  episode.season === jsonResult.season &&
+                    episode.episodeNumber === jsonResult.episodeNumber
+        });
+    }
+
+    router.post('/:user_id/episodes/:show_id', /*authUser,*/ function(req, res) {
+        var userId = req.params.user_id;
+        var showId = req.params.show_id;
+        importShowEpisodes(userId, showId, res);
+    });
+
 
     // Add an episode to the user's unwatched queue. Parameters are show_id, season, episode_number
     // router.post('/:user_id/episodes', authUser, function(req, res) {
@@ -391,7 +410,6 @@ module.exports = function(app, passport) {
                         "episode_number": 8,
                         "watched": false
                     }
-
                 ]
             }
         ]
