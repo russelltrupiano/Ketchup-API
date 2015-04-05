@@ -200,7 +200,7 @@ module.exports = function(app, passport) {
                     if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
                         // Show has already been subscribed to
                         console.log("Show is already subscribed to");
-                        res.send({status: 200, title: ""});
+                        return res.send({status: 200, title: ""});
                     } else {
                         cb(err, user, showData);
                     }
@@ -228,6 +228,7 @@ module.exports = function(app, passport) {
                     // The image is cached
                     if (show) {
                         tvshow.imageUrl = show.imageUrl;
+                        cb(null, user, tvshow);
                     }
                     // Scrape for the image and add to cache
                     else {
@@ -243,13 +244,12 @@ module.exports = function(app, passport) {
                                     if (err) {
                                         return cb(err, null, null);
                                     }
-                                    tvshow.link = newShow.imageUrl;
+                                    tvshow.imageUrl = newShow.imageUrl;
+                                    cb(null, user, tvshow);
                                 });
                             });
                         });
-
                     }
-                    cb(null, user, tvshow);
                 });
             },
             function updateUserShowData(user, tvshow, cb) {
@@ -260,51 +260,92 @@ module.exports = function(app, passport) {
                     }
                     console.log("Successfully saved user data");
                     res.send({status: 200, title: tvshow.title[0]});
-                })
-
+                    cb(null);
+                });
             }
         ], function done(err) {
             if (err) {
                 console.log("ERROR: " + err);
+                return res.sendStatus(503, err);
             } else {
                 // import episodes for show
                 console.log("User data updated");
+                importShowEpisodes(userId, showId, res);
             }
         });
     });
 
     // This function should be able to do imitial import as well as
     // incrementally add shows as the show object is updated
-    function importShowEpisodes(user, showId, response) {
-        tvRage.getAllEpisodesForShow(showId, function(error, result) {
+    function importShowEpisodes(userId, showId, res) {
+        tvRage.getAllEpisodesForShow(showId, function(error, seasonEpisodeArr) {
             if (error) {
-                return response.sendStatus(503, error);
+                return res.sendStatus(503, error);
             }
-            response.send({status: 200, response: result});
-            // User.findById(user._id, function(err, user) {
-            //     var index = _.findIndex(user.tvShows, {'id': showId});
+            User.findById(userId, function(err, user) {
 
-            //     for (var i = 0; i < result.length; i++) {
-            //         // Check if result is in episode array
-            //         if (!isEpisodeAdded(user.tvShows[index].episodes, result[i])) {
-            //             user.tvShows[index].episodes.push({
-            //                 airdate: result.airdate,
-            //                 episodeNumber: result.episodeNumber,
-            //                 season: result.season,
-            //                 title: result.title,
-            //                 watched: false
-            //             });
-            //         }
-            //     }
-            // });
+                if (err) {
+                    return res.sendStatus(503, err);
+                } else if (!user) {
+                    return res.sendStatus(503, "No user found");
+                }
+
+                var index = _.findIndex(user.tvShows, {'id': showId.toString()});
+                // This shouldn't ever really happen
+                if (index === -1) {
+                    return;
+                }
+
+                // Iterate through each season
+                for (var i = 1; i <= seasonEpisodeArr.length; i++) {
+                    // Iterate over every episode for that season
+                    // i is the season index, j is the episode index
+                    var seasonEpisodes = seasonEpisodeArr[i-1].episode;
+                    for (var j = 1; j <= seasonEpisodes.length; j++) {
+
+                        var epData = filterEpisodeData(i, j, seasonEpisodes[j-1]);
+
+                        // Check if result is in episode array
+                        if (!isEpisodeAdded(user.tvShows[index].episodes, seasonEpisodes[j-1])) {
+                            user.tvShows[index].episodes.push(epData);
+                        }
+                    }
+                }
+
+                user.save(function(err) {
+                    if (err) {
+                        return res.sendStatus(503, err);
+                    }
+                    console.log("Imported all shows for " + showId);
+                });
+            });
         });
     }
 
+    function filterEpisodeData(season, episodenum, xmlToJsonEpisodeData) {
+        return {
+            airdate: parseDataIfArray(xmlToJsonEpisodeData.airdate),
+            episodeNumber: episodenum,
+            season: season,
+            title: parseDataIfArray(xmlToJsonEpisodeData.title),
+            watched: false
+        };
+    }
+
+    function parseDataIfArray(arr) {
+        if (_.isArray(arr)) {
+            return arr[0];
+        } else {
+            return arr;
+        }
+    }
+
     function isEpisodeAdded(episodesArr, jsonResult) {
-        return _.findIndex(episodesArr, function(episode) {
+        var idx = _.findIndex(episodesArr, function(episode) {
             return  episode.season === jsonResult.season &&
                     episode.episodeNumber === jsonResult.episodeNumber
         });
+        return idx !== -1
     }
 
     router.post('/:user_id/episodes/:show_id', /*authUser,*/ function(req, res) {

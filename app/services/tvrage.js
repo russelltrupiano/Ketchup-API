@@ -98,15 +98,13 @@ exports.searchShow = function(query, cb) {
             // JSON
             parseString(response.body, function(err, result) {
                 if (err) {
-                    console.log("tvrage.js: parsing went wrong");
-                    return cb("Internal server error", null);
+                    return cb("Error parsing xml into json", null);
                 }
                 return cb(null, filterShows(result, 8));
             });
 
         } else {
-            console.log("tvrage.js: request went wrong. " + error);
-            return cb("Internal server error", null);
+            return cb("Request to TVRage failed", null);
         }
     });
 }
@@ -120,13 +118,13 @@ exports.getShowInfo = function(id, cb) {
             // JSON
             parseString(response.body, function(err, result) {
                 if (err) {
-                    return cb("Internal server error", null);
+                    return cb("Error parsing xml into json", null);
                 }
                 return cb(null, filterShow(result));
             });
 
         } else {
-            return cb("Internal server error", null);
+            return cb("Request to TVRage failed", null);
         }
     });
 }
@@ -140,13 +138,13 @@ exports.getEpisodeInfo = function(id, season, episode_number, cb) {
             // JSON
             parseString(response.body, function(err, result) {
                 if (err) {
-                    return cb("Internal server error", null);
+                    return cb("Error parsing xml into json", null);
                 }
                 return cb(null, filterEpisode(result));
             });
 
         } else {
-            return cb("Internal server error", null);
+            return cb("Request to TVRage failed", null);
         }
     });
 }
@@ -160,12 +158,12 @@ exports.getAllEpisodesForShow = function(showId, cb) {
             //JSON
             parseString(response.body, function(err, result) {
                 if (err) {
-                    return cb("Internal server error", null);
+                    return cb("Error parsing xml into json", null);
                 }
-                return cb(null, filterEpisodeArray(result));
+                return cb(null, result.Show.Episodelist[0].Season);
             });
         } else {
-            return cb("Internal server error", null);
+            return cb("Request to TVRage failed", null);
         }
     })
 }
