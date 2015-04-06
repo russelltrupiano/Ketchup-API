@@ -3,7 +3,8 @@ var mongoose    = require('mongoose');
 var jsonSchema = {
 
     showId: String,
-    imageUrl: String
+    imageUrl: String,
+    headerUrl: String
 }
 
 var imageCacheSchema = mongoose.Schema(jsonSchema);

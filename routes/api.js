@@ -1,16 +1,17 @@
-var _ = require('lodash');
-var express = require('express');
-var htmlencode = require('htmlencode');
+var _           = require('lodash');
+var express     = require('express');
+var htmlencode  = require('htmlencode');
 var parseString = require('xml2js').parseString;
-var request = require('request');
-var tvRage = require('../app/services/tvrage');
-var scraper = require('../app/services/scraper');
-var validator = require('validator');
-var sync = require('sync');
-var async = require('async');
+var request     = require('request');
+var tvRage      = require('../app/services/tvrage');
+var trakt       = require('../app/services/trakt');
+var scraper     = require('../app/services/scraper');
+var validator   = require('validator');
+var sync        = require('sync');
+var async       = require('async');
 
-var User = require('../app/models/user');
-var ImageCache = require('../app/models/imagecache');
+var User        = require('../app/models/user');
+var ImageCache  = require('../app/models/imagecache');
 
 function sanitizeString(str) {
     return validator.toString(str);
@@ -112,7 +113,6 @@ function isEpisodeAdded(episodesArr, jsonResult) {
         return  episode.season === jsonResult.season &&
                 episode.episodeNumber === jsonResult.episodeNumber;
     });
-    console.log("Checking if present: " + idx);
     return idx !== -1;
 }
 
@@ -311,12 +311,6 @@ module.exports = function(app, passport) {
         });
     });
 
-    router.get('/test', function(req, res) {
-        scraper.scrapeForImage({link: 'http://www.tvrage.com/better-call-saul'}, function(err, result) {
-            return res.send('<img src=\'' + result + '\'>');
-        });
-    });
-
     // Add a show to a user's subscription list. Parameters are show_id
     router.post('/:user_id/subscribe', /*authUser,*/ function(req, res) {
 
@@ -363,26 +357,60 @@ module.exports = function(app, passport) {
 
                     // The image is cached
                     if (show) {
+                        console.log("IMAGE IN CACHE");
                         tvshow.imageUrl = show.imageUrl;
+                        tvshow.headerUrl = show.headerUrl;
                         cb(null, user, tvshow);
                     }
                     // Scrape for the image and add to cache
                     else {
+                        console.log("NEED TO FETCH IMAGE");
                         var newShow = new ImageCache();
 
                         sync(function() {
-                            scraper.scrapeForImage({link: showData.link}, function(error, resultUrl) {
 
-                                newShow.showId = showId;
-                                newShow.imageUrl = resultUrl;
-
-                                newShow.save(function(err) {
-                                    if (err) {
-                                        return cb(err, null, null);
+                            trakt.getShowImages(showId, function(err, images) {
+                                if (err) {
+                                    console.log("ERROR GETTING IMAGE URL");
+                                    newShow.imageUrl = '';
+                                    newShow.headerUrl = '';
+                                // If there is an image and poster move on
+                                } else if (typeof images != 'undefined' && typeof images.poster != 'undefined') {
+                                    newShow.showId = showId;
+                                    newShow.imageUrl = images.poster.medium;
+                                    if (typeof images.fanart != 'undefined' && images.fanart.medium != null) {
+                                        newShow.headerUrl = images.fanart.medium;
+                                    } else {
+                                        newShow.headerUrl = newShow.imageUrl;
                                     }
-                                    tvshow.imageUrl = newShow.imageUrl;
-                                    cb(null, user, tvshow);
-                                });
+                                    console.log("GOT IMAGE URLS:\n\t" + newShow.imageUrl + "\n\t" + newShow.headerUrl);
+                                    newShow.save(function(err) {
+                                        if (err) {
+                                            return cb(err, null, null);
+                                        }
+                                        tvshow.imageUrl = newShow.imageUrl;
+                                        tvshow.headerUrl = newShow.headerUrl;
+                                        cb(null, user, tvshow);
+                                    });
+                                } else {
+                                    console.log("RESORTING TO SCRAPING");
+                                    sync(function() {
+                                        scraper.scrapeForImage({link: showData.link}, function(error, resultUrl) {
+                                            newShow.showId = showId;
+                                            newShow.imageUrl = resultUrl;
+                                            newShow.headerUrl = resultUrl;
+
+                                            newShow.save(function(err) {
+                                                if (err) {
+                                                    return cb(err, null, null);
+                                                }
+                                                tvshow.imageUrl = newShow.imageUrl;
+                                                tvshow.headerUrl = newShow.headerUrl;
+                                                cb(null, user, tvshow);
+                                            });
+                                        });
+                                    });
+                                }
                             });
                         });
                     }
@@ -485,6 +513,9 @@ module.exports = function(app, passport) {
             }
 
             var index = _.findIndex(user.tvShows, {'id': showId.toString()});
+            if (index == -1) {
+                return res.send({status: 503, message: "Show not found"});
+            }
 
             console.log("Deleting from index " + index);
 

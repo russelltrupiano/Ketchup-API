@@ -31,6 +31,7 @@ var jsonSchema = {
             airtime: String,
             ended: String,
             imageUrl: String,
+            headerUrl: String,
             link: String,
             runtime: String,
             status: String,

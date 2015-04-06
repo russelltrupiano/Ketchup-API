@@ -1,5 +1,6 @@
-var request = require('request');
-var auth = require('../../config/auth');
+var request     = require('request');
+var auth        = require('../../config/auth');
+var trakt       = require("node-trakt");
 
 exports.sendPushNotification = function(messageTitle, messageText) {
 
