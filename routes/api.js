@@ -364,7 +364,7 @@ module.exports = function(app, passport) {
                     }
                     // Scrape for the image and add to cache
                     else {
-                        console.log("NEED TO FETCH IMAGE");
+                        console.log("NEED TO FETCH ImageCache");
                         var newShow = new ImageCache();
 
                         sync(function() {

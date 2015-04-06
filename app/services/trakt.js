@@ -2,13 +2,17 @@ var request = require('request');
 var _ = require('lodash');
 var auth = require('../../config/auth');
 
+var baseUrl = "https://api-v2launch.trakt.tv";
+
+var headers = {
+    'Content-type': 'application/json',
+    'trakt-api-version': 2,
+    'trakt-api-key': auth.traktAPIKey
+};
+
 exports.getShowImages = function(id, cb) {
-    var url = "https://api-v2launch.trakt.tv/search?id_type=tvrage&id="+id;
-    var headers = {
-        'Content-type': 'application/json',
-        'trakt-api-version': 2,
-        'trakt-api-key': auth.traktAPIKey
-    };
+    var url = baseUrl + "/search?id_type=tvrage&id="+id;
+
     console.log(url);
 
     request({url: url, headers: headers}, function(error, response, body) {
