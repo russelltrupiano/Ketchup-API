@@ -45,28 +45,23 @@ function authUser(req, res, next) {
 // incrementally add shows as the show object is updated
 function importShowEpisodes(userId, showId, res, cb) {
     tvRage.getAllEpisodesForShow(showId, function(error, seasonEpisodeArr) {
-        console.log("1");
         if (error) {
-            return res.sendStatus(503, error);
+            return cb(error);
         }
         User.findById(userId, function(err, user) {
 
-            console.log("2");
             if (err) {
-                console.log("2.1");
-                return res.sendStatus(503, err);
+                cb(err);
             } else if (!user) {
-                console.log("2.2");
-                return res.sendStatus(503, "No user found");
+                return cb("No user found");
             }
 
             var index = _.findIndex(user.tvShows, {'id': showId.toString()});
             // This shouldn't ever really happen
             if (index === -1) {
-                return;
+                return cb("Show is not subscribed to");
             }
 
-            console.log("3");
             // Iterate through each season
             for (var i = 1; i <= seasonEpisodeArr.length; i++) {
                 // Iterate over every episode for that season
@@ -83,12 +78,12 @@ function importShowEpisodes(userId, showId, res, cb) {
                 }
             }
 
-            console.log("4");
             user.save(function(err) {
                 if (err) {
-                    return res.sendStatus(503, err);
+                    return cb(err);
                 }
-                cb();
+                // Done successfully
+                cb(null);
             });
         });
     });
@@ -229,7 +224,12 @@ module.exports = function(app, passport) {
 
         User.findById(userId, function(err, user) {
             res.setHeader('content-type', 'text/json');
-            return res.send({"shows": user.tvShows});
+            return res.send({"shows": user.tvShows.sort(function(a, b) {
+                var nameA = a.title.toLowerCase(), nameB = b.title.toLowerCase()
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+            })});
         });
     });
 
@@ -406,7 +406,11 @@ module.exports = function(app, passport) {
             } else {
                 // import episodes for show
                 console.log("User data updated");
-                importShowEpisodes(userId, showId, res, function() {
+                importShowEpisodes(userId, showId, res, function(err) {
+                    if (err) {
+                        console.log("ERROR: " + err);
+                        return res.sendStatus(503, err);
+                    }
                     console.log("Episodes imported");
                 });
             }
@@ -416,7 +420,10 @@ module.exports = function(app, passport) {
     router.post('/:user_id/episodes/:show_id', /*authUser,*/ function(req, res) {
         var userId = req.params.user_id;
         var showId = req.params.show_id;
-        importShowEpisodes(userId, showId, res, function() {
+        importShowEpisodes(userId, showId, res, function(err) {
+            if (err) {
+                return res.send({status: 503, message: err});
+            }
             res.send({status: 200});
         });
     });
