@@ -3,7 +3,6 @@ var express     = require('express');
 var htmlencode  = require('htmlencode');
 var parseString = require('xml2js').parseString;
 var request     = require('request');
-var tvRage      = require('../app/services/tvrage');
 var trakt       = require('../app/services/trakt');
 var scraper     = require('../app/services/scraper');
 var validator   = require('validator');
@@ -42,10 +41,10 @@ function authUser(req, res, next) {
     }
 }
 
-// This function should be able to do imitial import as well as
+// This function should be able to do initial import as well as
 // incrementally add shows as the show object is updated
-function importShowEpisodes(userId, showId, res, cb) {
-    tvRage.getAllEpisodesForShow(showId, function(error, seasonEpisodeArr) {
+function importShowEpisodes(userId, showId, cb) {
+    trakt.getAllEpisodesForShow(showId, function(error, seasonEpisodeArr) {
         if (error) {
             return cb(error);
         }
@@ -54,28 +53,25 @@ function importShowEpisodes(userId, showId, res, cb) {
             if (err) {
                 cb(err);
             } else if (!user) {
+                console.log("No user found");
                 return cb("No user found");
             }
+
+            console.log(user.tvShows);
+            console.log(showId);
 
             var index = _.findIndex(user.tvShows, {'id': showId.toString()});
             // This shouldn't ever really happen
             if (index === -1) {
+                console.log("Show not subbed to");
                 return cb("Show is not subscribed to");
             }
 
-            // Iterate through each season
-            for (var i = 1; i <= seasonEpisodeArr.length; i++) {
-                // Iterate over every episode for that season
-                // i is the season index, j is the episode index
-                var seasonEpisodes = seasonEpisodeArr[i-1].episode;
-                for (var j = 1; j <= seasonEpisodes.length; j++) {
 
-                    var epData = filterEpisodeData(i, j, seasonEpisodes[j-1]);
-
-                    // Check if result is in episode array
-                    if (!isEpisodeAdded(user.tvShows[index].episodes, epData)) {
-                        user.tvShows[index].episodes.push(epData);
-                    }
+            // Iterate through every episode
+            for (var i = 0; i < seasonEpisodeArr.length; i++) {
+                if (!isEpisodeAdded(user.tvShows[index], seasonEpisodeArr[i])) {
+                    user.tvShows[index].episodes.push(seasonEpisodeArr[i]);
                 }
             }
 
@@ -93,7 +89,7 @@ function importShowEpisodes(userId, showId, res, cb) {
 function filterEpisodeData(season, episodenum, xmlToJsonEpisodeData) {
     return {
         airdate: parseDataIfArray(xmlToJsonEpisodeData.airdate),
-        episodeNumber: episodenum,
+        number: episodenum,
         season: season,
         title: parseDataIfArray(xmlToJsonEpisodeData.title),
         watched: false
@@ -109,9 +105,12 @@ function parseDataIfArray(arr) {
 }
 
 function isEpisodeAdded(episodesArr, jsonResult) {
+    if (jsonResult.airdate == null) {
+        return true;
+    }
     var idx = _.findIndex(episodesArr, function(episode) {
         return  episode.season === jsonResult.season &&
-                episode.episodeNumber === jsonResult.episodeNumber;
+                episode.number === jsonResult.number;
     });
     return idx !== -1;
 }
@@ -164,56 +163,103 @@ module.exports = function(app, passport) {
         return res.send({status: 200});
     });
 
-    // Login via facebook
-    router.get('/auth/facebook', passport.authenticate('facebook', { scope : 'email' }));
-
-    // Callback after facebook authentication
-    router.get('/auth/facebook/callback', function(req, res) {
-        console.log("Calling facebook callback");
-    });
-
-    // Login via google
-    router.get('/auth/google', function(req, res) {
-
-    });
-
-    // Callback after google authentication
-    router.get('/auth/google/callback', function(req, res) {
-
-    });
-
-    // Search for a show using the TVRage API
+    // Search for a show using the Trakt API
     router.get('/search', function(req, res) {
 
         var show = sanitizeString(req.query.query);
         show = htmlencode.htmlEncode(show);
 
-        tvRage.searchShow(show, function(error, result) {
+        trakt.searchShow(show, function(error, result) {
 
             if (error) {
                 console.log("api.js: " + error);
                 return res.sendStatus(503, error);
             }
 
-            res.setHeader('content-type', 'text/json');
-            res.send(result);
+            res.send({status: 200, result: result});
         });
     });
 
     // Get the info about any show
-    router.get('/shows/:showid', function(req, res) {
+    router.get('/shows/:slug', function(req, res) {
 
-        var id = req.params.showid;
-        if (!validator.isInt(id)) {
-            return res.sendStatus(403, "Invalid id");
-        }
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
 
-        tvRage.getShowInfo(id, function(error, result) {
+        trakt.getShowInfo(slug, function(error, result) {
             if (error) {
                 return res.sendStatus(503, error);
             }
 
-            res.setHeader('content-type', 'text/json');
+            res.send({status: 200, result: result});
+        });
+    });
+
+    // Get the info about any show
+    router.get('/images/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getShowImagesTrakt(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    router.get('/episodes/:slug/:season/:number', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        var season = req.params.season;
+        if (!validator.isInt(season)) {
+            return res.sendStatus(403, "Invalid season");
+        }
+
+        var number = req.params.number;
+        if (!validator.isInt(number)) {
+            return res.sendStatus(403, "Invalid number");
+        }
+
+        trakt.getEpisodeInfo(slug, season, number, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    // Get all episodes for a show
+    router.get('/episodes/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getAllEpisodesForShow(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    // get all seasons of show
+    router.get('/seasons/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getSeasonListForShow(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
             res.send(result);
         });
     });
@@ -223,19 +269,13 @@ module.exports = function(app, passport) {
         var userId = req.params.user_id;
 
         User.findById(userId, function(err, user) {
-            res.setHeader('content-type', 'text/json');
-            return res.send({"shows": user.tvShows.sort(function(a, b) {
+            return res.send({status: 200, shows: user.tvShows.sort(function(a, b) {
                 var nameA = a.title.toLowerCase(), nameB = b.title.toLowerCase()
                 if (nameA < nameB) return -1;
                 if (nameA > nameB) return 1;
                 return 0;
             })});
         });
-    });
-
-    // Get a particular subscribed show for a user
-    router.get('/:user_id/shows/:show_id', function(req, res) {
-
     });
 
     // Get all episodes for a subscribed show for a user
@@ -279,11 +319,6 @@ module.exports = function(app, passport) {
         });
     });
 
-    // Get a particular episode from a subscribed show for a user
-    router.get('/:user_id/shows/:show_id/episodes/:episode_id', function(req, res) {
-
-    });
-
     // Get all unwatched episodes for a user
     router.get('/:user_id/unwatched', function(req, res) {
         var userId = req.params.user_id;
@@ -314,19 +349,27 @@ module.exports = function(app, passport) {
     // Add a show to a user's subscription list. Parameters are show_id
     router.post('/:user_id/subscribe', /*authUser,*/ function(req, res) {
 
-        validateIntegerBodyParams(res, [req.body.show_id]);
+        var userId = sanitizeString(req.params.user_id);
+        userId = htmlencode.htmlEncode(userId);
 
-        var showId = validator.toInt(req.body.show_id);
-        var userId = req.params.user_id;
+        var showId = sanitizeString(req.body.show_id);
+        showId = htmlencode.htmlEncode(showId);
 
         async.waterfall([
             function getShowInfo(cb) {
-                tvRage.getShowInfo(showId, function(err, result) {
+                trakt.getShowInfo(showId, function(err, result) {
                     cb(err, result);
                 });
             },
             function getUser(showData, cb) {
                 User.findById(userId, function(err, user) {
+
+                    if (err) {
+                        cb(err, null, null);
+                    } else if (!user) {
+                        cb("No user with " + userId + " found", null, null);
+                    }
+
                     if (_.findIndex(user.tvShows, {'id': showId.toString()}) != -1) {
                         // Show has already been subscribed to
                         console.log("Show is already subscribed to");
@@ -337,84 +380,20 @@ module.exports = function(app, passport) {
                 });
             },
             function checkImageCache(user, showData, cb) {
-                ImageCache.findOne({'showId': showId}, function(err, show) {
-                    if (err) return cb(err, null, null);
+                var tvshow = {
+                    id: showData.id,
+                    airday: showData.airday,
+                    airtime: showData.airtime,
+                    image_url: showData.thumbnail_image,
+                    banner_url: showData.banner_image,
+                    runtime: showData.runtime,
+                    status: showData.status,
+                    title: showData.title,
+                    network: showData.network,
+                    episodes: []
+                };
 
-                    var url = '';
-                    var tvshow = {
-                            id: showId,
-                            airday: showData.airday,
-                            airtime: showData.airtime,
-                            ended: showData.ended,
-                            imageUrl: '',
-                            link: showData.link,
-                            runtime: showData.runtime,
-                            status: showData.status,
-                            title: showData.name,
-                            network: showData.network,
-                            episodes: []
-                        };
-
-                    // The image is cached
-                    if (show) {
-                        console.log("IMAGE IN CACHE");
-                        tvshow.imageUrl = show.imageUrl;
-                        tvshow.headerUrl = show.headerUrl;
-                        cb(null, user, tvshow);
-                    }
-                    // Scrape for the image and add to cache
-                    else {
-                        console.log("NEED TO FETCH ImageCache");
-                        var newShow = new ImageCache();
-
-                        sync(function() {
-
-                            trakt.getShowImages(showId, function(err, images) {
-                                if (err) {
-                                    console.log("ERROR GETTING IMAGE URL");
-                                    newShow.imageUrl = '';
-                                    newShow.headerUrl = '';
-                                // If there is an image and poster move on
-                                } else if (typeof images != 'undefined' && typeof images.poster != 'undefined') {
-                                    newShow.showId = showId;
-                                    newShow.imageUrl = images.poster.medium;
-                                    if (typeof images.fanart != 'undefined' && images.fanart.medium != null) {
-                                        newShow.headerUrl = images.fanart.medium;
-                                    } else {
-                                        newShow.headerUrl = newShow.imageUrl;
-                                    }
-                                    console.log("GOT IMAGE URLS:\n\t" + newShow.imageUrl + "\n\t" + newShow.headerUrl);
-                                    newShow.save(function(err) {
-                                        if (err) {
-                                            return cb(err, null, null);
-                                        }
-                                        tvshow.imageUrl = newShow.imageUrl;
-                                        tvshow.headerUrl = newShow.headerUrl;
-                                        cb(null, user, tvshow);
-                                    });
-                                } else {
-                                    console.log("RESORTING TO SCRAPING");
-                                    sync(function() {
-                                        scraper.scrapeForImage({link: showData.link}, function(error, resultUrl) {
-                                            newShow.showId = showId;
-                                            newShow.imageUrl = resultUrl;
-                                            newShow.headerUrl = resultUrl;
-
-                                            newShow.save(function(err) {
-                                                if (err) {
-                                                    return cb(err, null, null);
-                                                }
-                                                tvshow.imageUrl = newShow.imageUrl;
-                                                tvshow.headerUrl = newShow.headerUrl;
-                                                cb(null, user, tvshow);
-                                            });
-                                        });
-                                    });
-                                }
-                            });
-                        });
-                    }
-                });
+                cb(null, user, tvshow);
             },
             function updateUserShowData(user, tvshow, cb) {
                 user.tvShows.push(tvshow);
@@ -423,7 +402,7 @@ module.exports = function(app, passport) {
                         return cb(err);
                     }
                     console.log("Successfully saved user data");
-                    res.send({status: 200, title: tvshow.title[0]});
+                    res.send({status: 200, title: tvshow.title});
                     cb(null);
                 });
             }
@@ -434,7 +413,7 @@ module.exports = function(app, passport) {
             } else {
                 // import episodes for show
                 console.log("User data updated");
-                importShowEpisodes(userId, showId, res, function(err) {
+                importShowEpisodes(userId, showId, function(err) {
                     if (err) {
                         console.log("ERROR: " + err);
                         return res.sendStatus(503, err);
@@ -445,10 +424,11 @@ module.exports = function(app, passport) {
         });
     });
 
+    // Update episode catalog for a show for a user
     router.post('/:user_id/episodes/:show_id', /*authUser,*/ function(req, res) {
         var userId = req.params.user_id;
         var showId = req.params.show_id;
-        importShowEpisodes(userId, showId, res, function(err) {
+        importShowEpisodes(userId, showId, function(err) {
             if (err) {
                 return res.send({status: 503, message: err});
             }
@@ -456,48 +436,7 @@ module.exports = function(app, passport) {
         });
     });
 
-
-    // Add an episode to the user's unwatched queue. Parameters are show_id, season, episode_number
-    // router.post('/:user_id/episodes', authUser, function(req, res) {
-
-    //     validateIntegerBodyParams(res, [req.body.show_id, req.body.season, req.body.episode_number]);
-
-    //     var userId = req.params.user_id;
-    //     var episodeNumber = validator.toInt(req.body.episode_number);
-    //     var seasonNumber = validator.toInt(req.body.season);
-    //     var showId = req.body.show_id;
-
-    //     console.log(episodeNumber, seasonNumber);
-
-    //     tvRage.getEpisodeInfo(showId, seasonNumber, episodeNumber, function(error, result) {
-
-    //         if (error) {
-    //             return res.sendStatus(503, error);
-    //         }
-
-    //         User.findById(userId, function(err, user) {
-
-    //             var index = _.findIndex(user.tvShows, {'id': showId});
-
-    //             user.tvShows[index].episodes.push({
-    //                 title: result.title,
-    //                 season: result.season,
-    //                 episodeNumber: result.episodeNumber,
-    //                 airdate: result.airdate
-    //             });
-
-    //             user.save(function(err) {
-    //                 if (err)
-    //                     throw err;
-
-    //                 return res.send({status: 200});
-    //             });
-    //         });
-    //     });
-    // });
-
     router.post('/:user_id/unsubscribe', /*authUser,*/ function(req, res) {
-        validateIntegerBodyParams(res, [req.body.show_id]);
 
         var userId = req.params.user_id;
         var showId = req.body.show_id;
@@ -594,11 +533,11 @@ module.exports = function(app, passport) {
                     // console.log(user.tvShows[subbedShowIndex].episodes);
                     console.log(episodeData.shows[i].episodes[j]);
                     console.log(episodeData.shows[i].episodes[j].season);
-                    console.log(episodeData.shows[i].episodes[j].episodeNumber);
+                    console.log(episodeData.shows[i].episodes[j].number);
 
                     var episodeIndex = _.findIndex(user.tvShows[subbedShowIndex].episodes, {
                         'season': episodeData.shows[i].episodes[j].season,
-                        'episodeNumber': episodeData.shows[i].episodes[j].episodeNumber
+                        'number': episodeData.shows[i].episodes[j].number
                     });
 
                     if (episodeIndex == -1) {
