@@ -3,7 +3,6 @@ var express     = require('express');
 var htmlencode  = require('htmlencode');
 var parseString = require('xml2js').parseString;
 var request     = require('request');
-var tvRage      = require('../app/services/tvrage');
 var trakt       = require('../app/services/trakt');
 var scraper     = require('../app/services/scraper');
 var validator   = require('validator');
@@ -106,6 +105,9 @@ function parseDataIfArray(arr) {
 }
 
 function isEpisodeAdded(episodesArr, jsonResult) {
+    if (jsonResult.airdate == null) {
+        return true;
+    }
     var idx = _.findIndex(episodesArr, function(episode) {
         return  episode.season === jsonResult.season &&
                 episode.number === jsonResult.number;
@@ -161,7 +163,7 @@ module.exports = function(app, passport) {
         return res.send({status: 200});
     });
 
-    // Search for a show using the TVRage API
+    // Search for a show using the Trakt API
     router.get('/search', function(req, res) {
 
         var show = sanitizeString(req.query.query);
@@ -422,7 +424,7 @@ module.exports = function(app, passport) {
         });
     });
 
-    // Test route to batch episodes
+    // Update episode catalog for a show for a user
     router.post('/:user_id/episodes/:show_id', /*authUser,*/ function(req, res) {
         var userId = req.params.user_id;
         var showId = req.params.show_id;
@@ -531,11 +533,11 @@ module.exports = function(app, passport) {
                     // console.log(user.tvShows[subbedShowIndex].episodes);
                     console.log(episodeData.shows[i].episodes[j]);
                     console.log(episodeData.shows[i].episodes[j].season);
-                    console.log(episodeData.shows[i].episodes[j].episodeNumber);
+                    console.log(episodeData.shows[i].episodes[j].number);
 
                     var episodeIndex = _.findIndex(user.tvShows[subbedShowIndex].episodes, {
                         'season': episodeData.shows[i].episodes[j].season,
-                        'episodeNumber': episodeData.shows[i].episodes[j].episodeNumber
+                        'number': episodeData.shows[i].episodes[j].number
                     });
 
                     if (episodeIndex == -1) {

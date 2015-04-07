@@ -158,7 +158,7 @@ exports.getAllEpisodesForShow = function(slug, cb) {
             var results = [];
 
             for (var i = 0; i < result.length; i++) {
-                if (result[i].number > 0) {
+                if (result[i].number > 0 && typeof result[i].episodes != 'undefined') {
                     for (var j = 0; j < result[i].episodes.length; j++) {
                         results.push(EpisodeData(result[i].episodes[j]));
                     }
