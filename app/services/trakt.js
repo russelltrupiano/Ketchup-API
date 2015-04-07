@@ -12,7 +12,6 @@ var headers = {
 
 exports.getShowImages = function(id, cb) {
     var url = baseUrl + "/search?id_type=tvrage&id="+id;
-
     console.log(url);
 
     request({url: url, headers: headers}, function(error, response, body) {
@@ -31,4 +30,29 @@ exports.getShowImages = function(id, cb) {
             return cb("Request to Trakt failed", null);
         }
     });
+}
+
+exports.searchShow = function(query, cb) {
+    var url = baseUrl + "/search?query="+query+"&type=show&extended=full";
+    console.log(url);
+}
+
+exports.getShowInfo = function(slug, cb) {
+    var url = baseUrl + "/shows/"+slug+"?extended=full,images";
+    console.log(url);
+}
+
+exports.getEpisodeInfo = function(slug, season, episode_number, cb) {
+    var url = baseUrl + "/shows/"+slug+"/seasons/"+season+"/episodes/"+episode_number+"?extended=full,images";
+    console.log(url);
+}
+
+exports.getAllEpisodesForShow = function(slug, cb) {
+    var url = baseUrl + "/shows/"+slug+"/seasons?extended=episodes";
+    console.log(url);
+}
+
+exports.getSeasonListForShow = function(slug, cb) {
+    var url = baseUrl + "/shows/"+slug+"/seasons";
+    console.log(url);
 }
