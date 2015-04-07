@@ -93,7 +93,7 @@ function importShowEpisodes(userId, showId, res, cb) {
 function filterEpisodeData(season, episodenum, xmlToJsonEpisodeData) {
     return {
         airdate: parseDataIfArray(xmlToJsonEpisodeData.airdate),
-        episodeNumber: episodenum,
+        number: episodenum,
         season: season,
         title: parseDataIfArray(xmlToJsonEpisodeData.title),
         watched: false
@@ -183,7 +183,7 @@ module.exports = function(app, passport) {
     });
 
     // Search for a show using the TVRage API
-    router.get('/search', function(req, res) {
+    router.get('/0/search', function(req, res) {
 
         var show = sanitizeString(req.query.query);
         show = htmlencode.htmlEncode(show);
@@ -197,6 +197,23 @@ module.exports = function(app, passport) {
 
             res.setHeader('content-type', 'text/json');
             res.send(result);
+        });
+    });
+
+    // Search for a show using the TVRage API
+    router.get('/search', function(req, res) {
+
+        var show = sanitizeString(req.query.query);
+        show = htmlencode.htmlEncode(show);
+
+        trakt.searchShow(show, function(error, result) {
+
+            if (error) {
+                console.log("api.js: " + error);
+                return res.sendStatus(503, error);
+            }
+
+            res.send({status: 200, result: result});
         });
     });
 
@@ -214,6 +231,89 @@ module.exports = function(app, passport) {
             }
 
             res.setHeader('content-type', 'text/json');
+            res.send(result);
+        });
+    });
+
+    // Get the info about any show
+    router.get('/2/shows/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getShowInfo(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    // Get the info about any show
+    router.get('/2/images/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getShowImagesTrakt(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    // Get the info about any show
+    router.get('/2/episodes/:slug/:season/:number', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        var season = req.params.season;
+        if (!validator.isInt(season)) {
+            return res.sendStatus(403, "Invalid season");
+        }
+
+        var number = req.params.number;
+        if (!validator.isInt(number)) {
+            return res.sendStatus(403, "Invalid number");
+        }
+
+        trakt.getEpisodeInfo(slug, season, number, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    router.get('/2/episodes/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getAllEpisodesForShow(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
+            res.send(result);
+        });
+    });
+
+    router.get('/2/seasons/:slug', function(req, res) {
+
+        var slug = sanitizeString(req.params.slug);
+        slug = htmlencode.htmlEncode(slug);
+
+        trakt.getSeasonListForShow(slug, function(error, result) {
+            if (error) {
+                return res.sendStatus(503, error);
+            }
+
             res.send(result);
         });
     });

@@ -8,7 +8,7 @@ function ShowSearchResult(data) {
         airday: data.airday,
         airtime: data.airtime,
         ended: data.ended,
-        name: data.name,
+        title: data.name,
         runtime: data.runtime,
         showid: data.showid,
         status: data.status,

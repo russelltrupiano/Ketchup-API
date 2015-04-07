@@ -30,8 +30,8 @@ var jsonSchema = {
             airday: String,
             airtime: String,
             ended: String,
-            imageUrl: String,
-            headerUrl: String,
+            image_url: String,
+            banner_url: String,
             link: String,
             runtime: String,
             status: String,
@@ -39,8 +39,9 @@ var jsonSchema = {
             network: String,
             episodes: [
                 {
+                    id: Number,
                     airdate: String,
-                    episodeNumber: Number,
+                    number: Number,
                     season: Number,
                     title: String,
                     watched: Boolean
