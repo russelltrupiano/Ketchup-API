@@ -102,8 +102,8 @@ exports.searchShow = function(query, cb) {
                 var imageUrl = '';
                 if (typeof result[i].show.images != 'undefined' && result[i].show.images != null) {
                     if (typeof result[i].show.images.fanart != 'undefined' && result[i].show.images.fanart != null) {
-                        if (result[i].show.images.fanart.medium != null) {
-                            imageUrl = result[i].show.images.fanart.medium;
+                        if (result[i].show.images.fanart.thumb != null) {
+                            imageUrl = result[i].show.images.fanart.thumb;
                         }
                     }
                 }
@@ -186,6 +186,36 @@ exports.getSeasonListForShow = function(slug, cb) {
                     results.push(result[i].number)
                 }
             }
+
+            cb(null, results);
+        } else {
+            return cb("Request to Trakt failed", null);
+        }
+    });
+}
+
+exports.getPopularShows = function(cb) {
+    var url = baseUrl + "/shows/popular?extended=images";
+    console.log(url);
+
+    request({url: url, headers: headers}, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+
+            var results = [];
+            var result = JSON.parse(response.body);
+
+            for (var i = 0; i < result.length; i++) {
+                var imageUrl = '';
+                if (typeof result[i].images != 'undefined' && result[i].images != null) {
+                    if (typeof result[i].images.poster != 'undefined' && result[i].images.poster != null) {
+                        if (result[i].images.poster.thumb != null) {
+                            imageUrl = result[i].images.poster.thumb;
+                        }
+                    }
+                }
+                results.push(SearchResult(result[i].ids.slug, result[i].title, result[i].year, imageUrl));
+            }
+
 
             cb(null, results);
         } else {
