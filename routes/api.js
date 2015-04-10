@@ -5,12 +5,13 @@ var parseString = require('xml2js').parseString;
 var request     = require('request');
 var trakt       = require('../app/services/trakt');
 var scraper     = require('../app/services/scraper');
+var scheduler   = require('../app/services/scheduler');
 var validator   = require('validator');
 var sync        = require('sync');
 var async       = require('async');
 
 var User        = require('../app/models/user');
-var ImageCache  = require('../app/models/imagecache');
+var Server      = require('../app/models/server');
 
 function sanitizeString(str) {
     return validator.toString(str);
@@ -86,6 +87,30 @@ function importShowEpisodes(userId, showId, cb) {
     });
 }
 
+function addServerSubscription(userId, showId, cb) {
+    User.findById(userId, function(err, user) {
+        if (err) {
+            return cb(err);
+        }
+        if (!user) {
+            return cb("User not found");
+        }
+        scheduler.addSubscription(user.appId, showId, cb);
+    });
+}
+
+function removeServerSubscription(userId, showId, cb) {
+    User.findById(userId, function(err, user) {
+        if (err) {
+            return cb(err);
+        }
+        if (!user) {
+            return cb("User not found");
+        }
+        scheduler.removeSubscription(user.appId, showId, cb);
+    });
+}
+
 function filterEpisodeData(season, episodenum, xmlToJsonEpisodeData) {
     return {
         airdate: parseDataIfArray(xmlToJsonEpisodeData.airdate),
@@ -155,6 +180,48 @@ module.exports = function(app, passport) {
             });
 
         })(req, res, next);
+    });
+
+    router.post('/:user_id/register', function(req, res) {
+        var userId = sanitizeString(req.params.user_id);
+        var appId = sanitizeString(req.body.app_id);
+
+        User.findById(userId, function(err, user) {
+            if (err) {
+                return res.send({status: 503, message: err});
+            }
+            user.appId = appId;
+            user.save(function(err) {
+                if (err) {
+                    return res.send({status: 503, message: err});
+                }
+                res.send({status: 200});
+            });
+        });
+    });
+
+    router.post('/addtoserver', function (req, res) {
+        var userId = sanitizeString(req.body.user_id);
+        var showId = sanitizeString(req.body.show_id);
+
+        addServerSubscription(userId, showId, function(err) {
+            if (err) {
+                return res.send({status: 503, message: err});
+            }
+            res.send({status:200});
+        });
+    });
+
+    router.post('/removefromserver', function (req, res) {
+        var userId = sanitizeString(req.body.user_id);
+        var showId = sanitizeString(req.body.show_id);
+
+        removeServerSubscription(userId, showId, function(err) {
+            if (err) {
+                return res.send({status: 503, message: err});
+            }
+            res.send({status:200});
+        });
     });
 
     // Logout the user
@@ -389,11 +456,12 @@ module.exports = function(app, passport) {
                         console.log("Show is already subscribed to");
                         return res.send({status: 200, title: ""});
                     } else {
+                        userAppId = user.appId;
                         cb(err, user, showData);
                     }
                 });
             },
-            function checkImageCache(user, showData, cb) {
+            function buildTVShow(user, showData, cb) {
                 var tvshow = {
                     id: showData.id,
                     airday: showData.airday,
@@ -420,7 +488,7 @@ module.exports = function(app, passport) {
                     cb(null);
                 });
             }
-        ], function done(err) {
+        ], function done(err, user) {
             if (err) {
                 console.log("ERROR: " + err);
                 return res.sendStatus(503, err);
@@ -433,6 +501,13 @@ module.exports = function(app, passport) {
                         return res.sendStatus(503, err);
                     }
                     console.log("Episodes imported");
+                    addServerSubscription(userId, showId, function (err) {
+                       if (err) {
+                            console.log("ERROR: " + err);
+                            return res.sendStatus(503, err);
+                        }
+                        console.log("Server has been notified of subscription to " + showId);
+                    });
                 });
             }
         });
@@ -480,9 +555,13 @@ module.exports = function(app, passport) {
                 if (err) {
                     throw err;
                 }
-                return res.send({status: 200, title: [removedTitle]});
+                removeServerSubscription(userId, showId, function(err) {
+                    if (err) {
+                        throw err;
+                    }
+                    return res.send({status: 200, title: [removedTitle]});
+                });
             });
-
         });
     });
 
