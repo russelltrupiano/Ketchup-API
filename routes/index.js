@@ -19,10 +19,4 @@ router.post('/push', function(req, res) {
     res.sendStatus(200);
 });
 
-router.post('/init', function(req, res) {
-    scheduler.start(function(shows) {
-        res.send(shows);
-    });
-});
-
 module.exports = router;

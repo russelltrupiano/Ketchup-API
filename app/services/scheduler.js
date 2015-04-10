@@ -11,14 +11,28 @@ var _       = require('lodash');
 var request = require('request');
 
 agenda.define('schedule notification', function(job, done) {
-    notificationManager.sendPushNotification("One of your shows is airing!", job.attrs.data.message);
+    var data = job.attrs.data;
+
+    var title = data.show.show_title + " is airing!";
+    var message = data.show.title + "(" + data.show.season + "x" + data.show.number + ") is airing in 15 minutes!";
+
+    notificationManager.sendPushNotification(title, message, data.show.season, data.show.number, data.subscribers);
     done();
 });
 
-function scheduleNotification(showId, numMinutes, message) {
-    trakt.getTitleFromSlug(showId, function(err, title) {
-        console.log("Scheduling notification: " + title + message + " in " + numMinutes);
-        agenda.schedule('in ' + numMinutes + ' minutes', 'schedule notification', {message: title + message});
+agenda.define('check airings', function(job, done) {
+    runSchedulingSetup(function(shows) {
+        done();
+    });
+})
+
+function schedule15MinNotification(show, subscribers) {
+    trakt.getTitleFromSlug(show.show_id, function(err, title) {
+        show.show_title = title;
+        var notifTime = Math.round(show.time_until - 15);
+        var timeStr = 'in ' + notifTime + ' minutes';
+        console.log(timeStr + ", schedule notification " + show.show_title);
+        agenda.schedule(timeStr, 'schedule notification', {show: show, subscribers: subscribers});
     });
 
 }
@@ -38,6 +52,8 @@ function getAllShowsWithin24h(subscriptions, cb) {
     var shows = [];
     var today = new Date();
 
+    // var j = 1;
+
     async.each(subscriptions, function(show, callback) {
         trakt.getAllEpisodesForShow(show.id, function(error, seasonEpisodeArr) {
             if (error) {
@@ -51,6 +67,8 @@ function getAllShowsWithin24h(subscriptions, cb) {
 
             for (var i = 0; i < todayShows.length; i++) {
                 todayShows[i].time_until = minutesBetween(new Date(todayShows[i].airdate), today);
+                // todayShows[i].time_until = 15 + j;
+                // j++;
                 todayShows[i].show_id = show.id;
                 shows.push(todayShows[i]);
             }
@@ -78,12 +96,11 @@ function runSchedulingSetup(cb) {
             for (var i = 0; i < shows.length; i++) {
                 // Get all subscribers for show
                 var index = _.findIndex(server.subscriptions, {id: shows[i].show_id});
-                console.log(index);
                 if (index !== -1) {
-                    for (var j = 0; j < server.subscriptions[index].appIds.length; j++) {
-                        scheduleNotification(shows[i].show_id, shows[i].time_until, " is airing in 15 minutes");
-                        // console.log("Set notif for appid " + server.subscriptions[index].appIds[j] + " for show " + shows[i].show_id);
-                    }
+                    schedule15MinNotification(shows[i], server.subscriptions[index].appIds);
+                    // for (var j = 0; j < server.subscriptions[index].appIds.length; j++) {
+                    //     schedule15MinNotification(shows[i]);
+                    // }
                 }
             }
 
@@ -94,7 +111,9 @@ function runSchedulingSetup(cb) {
 }
 
 exports.start = function(cb) {
-    runSchedulingSetup(cb);
+    agenda.schedule('1 second', 'check airings', null);
+    agenda.every('24 hours', 'check airings');
+    agenda.start();
 }
 
 exports.addSubscription = function(userAppId, showId, cb) {
@@ -103,13 +122,11 @@ exports.addSubscription = function(userAppId, showId, cb) {
         if (err) {
             return cb(err);
         }
-
         if (!server) {
             server = new Server();
             server.serverKey = auth.serverKey;
             server.subscriptions = [];
         }
-
         // See if showId in queue
         var showIndex = _.findIndex(server.subscriptions, {id: showId});
         // Show not subscribed to
@@ -127,7 +144,6 @@ exports.addSubscription = function(userAppId, showId, cb) {
                 server.subscriptions[showIndex].appIds.push(userAppId);
             }
         }
-
         server.save(function(err) {
             if (err) {
                 return cb(err);
@@ -148,7 +164,6 @@ exports.removeSubscription = function(userAppId, showId, cb) {
         var showIndex = _.findIndex(server.subscriptions, {id: showId});
         // Make sure show subscribed to
         if (showIndex !== -1) {
-            console.log("Pulling from index " + showIndex);
             _.pull(server.subscriptions[showIndex].appIds, userAppId);
             server.markModified('subscriptions')
         }

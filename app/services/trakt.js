@@ -179,7 +179,6 @@ exports.getTitleFromSlug = function(slug, cb) {
     request({url: url, headers: headers}, function(error, response, body) {
         if (!error && response.statusCode == 200) {
             var result = JSON.parse(response.body);
-            console.log("slug to title: " + result.title);
             cb(null, result.title);
         } else {
             return cb("Request to Trakt failed", null);

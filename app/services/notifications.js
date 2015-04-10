@@ -2,7 +2,7 @@ var request     = require('request');
 var auth        = require('../../config/auth');
 var trakt       = require("node-trakt");
 
-exports.sendPushNotification = function(messageTitle, messageText, appIds) {
+exports.sendPushNotification = function(messageTitle, messageText, messageSeason, messageEpisode, appIds) {
 
     request({
         method: 'POST',
@@ -12,10 +12,12 @@ exports.sendPushNotification = function(messageTitle, messageText, appIds) {
             'Authorization':'key=' + auth.googleCloudMessagingId
         },
         body: JSON.stringify({
-            "registration_ids" : [auth.applicationRegId],
+            "registration_ids" : appIds,
             'data': {
                 'title': messageTitle,
-                'msg': messageText
+                'msg': messageText,
+                'season': messageSeason,
+                'episode_number': messageEpisode
             }
         })
     },

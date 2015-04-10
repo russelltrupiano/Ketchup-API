@@ -188,12 +188,12 @@ module.exports = function(app, passport) {
 
         User.findById(userId, function(err, user) {
             if (err) {
-                res.send({status: 503, message: err});
+                return res.send({status: 503, message: err});
             }
             user.appId = appId;
             user.save(function(err) {
                 if (err) {
-                    res.send({status: 503, message: err});
+                    return res.send({status: 503, message: err});
                 }
                 res.send({status: 200});
             });
@@ -501,13 +501,13 @@ module.exports = function(app, passport) {
                         return res.sendStatus(503, err);
                     }
                     console.log("Episodes imported");
-                });
-                addServerSubscription(userId, showId, function (err) {
-                   if (err) {
-                        console.log("ERROR: " + err);
-                        return res.sendStatus(503, err);
-                    }
-                    console.log("Server has been notified of subscription to " + showId);
+                    addServerSubscription(userId, showId, function (err) {
+                       if (err) {
+                            console.log("ERROR: " + err);
+                            return res.sendStatus(503, err);
+                        }
+                        console.log("Server has been notified of subscription to " + showId);
+                    });
                 });
             }
         });
