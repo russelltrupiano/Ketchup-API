@@ -3,7 +3,7 @@ var request             = require('request');
 var router              = express.Router();
 var auth                = require('../config/auth');
 var notificationManager = require('../app/services/notifications');
-var trakt               = require('../app/services/trakt');
+var scheduler           = require('../app/services/scheduler');
 
 /* GET home page. */
 router.get('/', function(req, res) {
@@ -19,13 +19,9 @@ router.post('/push', function(req, res) {
     res.sendStatus(200);
 });
 
-router.post('/trakt', function(req, res) {
-    trakt.getShowImages(6245, function(err, images) {
-        if (err) {
-            console.log('');
-        } else {
-            console.log(images.poster);
-        }
+router.post('/init', function(req, res) {
+    scheduler.start(function(shows) {
+        res.send(shows);
     });
 });
 

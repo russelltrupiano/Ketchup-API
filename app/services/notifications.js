@@ -2,7 +2,7 @@ var request     = require('request');
 var auth        = require('../../config/auth');
 var trakt       = require("node-trakt");
 
-exports.sendPushNotification = function(messageTitle, messageText) {
+exports.sendPushNotification = function(messageTitle, messageText, appIds) {
 
     request({
         method: 'POST',

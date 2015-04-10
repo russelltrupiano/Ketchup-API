@@ -51,7 +51,8 @@ var jsonSchema = {
     ],
 
     sessionId: String,
-    sessionExpires: Date
+    sessionExpires: Date,
+    appId: String
 }
 
 var userSchema = mongoose.Schema(jsonSchema);
