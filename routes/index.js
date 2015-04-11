@@ -13,7 +13,10 @@ router.get('/', function(req, res) {
 router.post('/push', function(req, res) {
     var title = req.body.title;
     var message = req.body.msg;
-    notificationManager.sendPushNotification(title, message, 1, 1, [auth.applicationRegId]);
+    var slug = req.body.slug;
+    var season = req.body.season;
+    var number = req.body.number;
+    notificationManager.sendPushNotification(title, message, slug, season, number, [auth.applicationRegId]);
 
     res.sendStatus(200);
 });

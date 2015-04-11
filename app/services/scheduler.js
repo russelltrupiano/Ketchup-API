@@ -16,7 +16,7 @@ agenda.define('schedule notification', function(job, done) {
     var title = data.show.show_title + " is airing!";
     var message = data.show.title + "(" + data.show.season + "x" + data.show.number + ") is airing in 15 minutes!";
 
-    notificationManager.sendPushNotification(title, message, data.show.season, data.show.number, data.subscribers);
+    notificationManager.sendPushNotification(title, message, data.show.show_id, data.show.season, data.show.number, data.subscribers);
     done();
 });
 
@@ -94,6 +94,12 @@ function runSchedulingSetup(cb) {
     var today = new Date();
 
     Server.findOne({serverKey: auth.serverKey}, function(err, server) {
+
+        if (!server) {
+            server = new Server();
+            server.serverKey = auth.serverKey;
+            server.subscriptions = [];
+        }
         // For each show collect all shows that have airdates within 24 hours
         getAllShowsWithin24h(server.subscriptions, function(shows) {
             // For every show, construct notifs for all subscribers
@@ -102,9 +108,6 @@ function runSchedulingSetup(cb) {
                 var index = _.findIndex(server.subscriptions, {id: shows[i].show_id});
                 if (index !== -1) {
                     schedule15MinNotification(shows[i], server.subscriptions[index].appIds);
-                    // for (var j = 0; j < server.subscriptions[index].appIds.length; j++) {
-                    //     schedule15MinNotification(shows[i]);
-                    // }
                 }
             }
 
