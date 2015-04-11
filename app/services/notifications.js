@@ -22,6 +22,8 @@ exports.sendPushNotification = function(messageTitle, messageText, messageSeason
         })
     },
     function(error, response, body) {
-        console.log({'response': "Success"});
+        if (error) {
+            throw error;
+        }
     });
 }

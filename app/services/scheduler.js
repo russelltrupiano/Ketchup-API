@@ -30,6 +30,9 @@ function schedule15MinNotification(show, subscribers) {
     trakt.getTitleFromSlug(show.show_id, function(err, title) {
         show.show_title = title;
         var notifTime = Math.round(show.time_until - 15);
+        if (notifTime < 0) {
+            notifTime = 0;
+        }
         var timeStr = 'in ' + notifTime + ' minutes';
         console.log(timeStr + ", schedule notification " + show.show_title);
         agenda.schedule(timeStr, 'schedule notification', {show: show, subscribers: subscribers});
@@ -40,7 +43,7 @@ function schedule15MinNotification(show, subscribers) {
 function sameDay(date1, date2) {
     // Time difference in days
     var timeDiff = (date1.getTime() - date2.getTime())/86400000;
-    return timeDiff >= 0.0 && timeDiff <= 1.0;
+    return timeDiff >= 0.0 && timeDiff <= 2.0;
 }
 
 function minutesBetween(date1, date2) {
@@ -80,6 +83,7 @@ function getAllShowsWithin24h(subscriptions, cb) {
         if (err) {
             cb(null);
         }
+        console.log("SHOWS AIRING WITHIN 24 HOURS:\n" + shows);
         cb(shows);
     });
 }

@@ -12,9 +12,8 @@ router.get('/', function(req, res) {
 
 router.post('/push', function(req, res) {
     var title = req.body.title;
-    var message = req.body.message;
-
-    notificationManager.sendPushNotification(title, message);
+    var message = req.body.msg;
+    notificationManager.sendPushNotification(title, message, 1, 1, [auth.applicationRegId]);
 
     res.sendStatus(200);
 });

@@ -350,6 +350,7 @@ module.exports = function(app, passport) {
         var userId = req.params.user_id;
 
         User.findById(userId, function(err, user) {
+            console.log("USER: " + user);
             return res.send({status: 200, shows: user.tvShows.sort(function(a, b) {
                 var nameA = a.title.toLowerCase(), nameB = b.title.toLowerCase()
                 if (nameA < nameB) return -1;
@@ -385,8 +386,6 @@ module.exports = function(app, passport) {
 
             // Iterate through every episode
             for (var i = 0; i < user.tvShows[idx].episodes.length; i++) {
-                console.log(user.tvShows[idx].episodes[i]);
-
                 // Only return unwatched episodes
                 if (filterUnwatched) {
                     if (!user.tvShows[idx].episodes[i].watched) {
@@ -411,12 +410,10 @@ module.exports = function(app, passport) {
             } else if (!user) {
                 return res.sendStatus(503, "No user found");
             }
-            console.log(user.tvShows);
             // Iterate through every show
             for (var i = 0; i < user.tvShows.length; i++) {
                 // Iterate through every episode
                 for (var j = 0; j < user.tvShows[i].episodes.length; j++) {
-                    console.log(user.tvShows[i].episodes[j]);
                     if (!user.tvShows[i].episodes[j].watched) {
                         episodes.push(user.tvShows[i].episodes[j]);
                     }
@@ -622,11 +619,6 @@ module.exports = function(app, passport) {
 
                 // Iterate through each episode for that show
                 for (var j = 0; j < episodeData.shows[i].episodes.length; j++) {
-
-                    // console.log(user.tvShows[subbedShowIndex].episodes);
-                    console.log(episodeData.shows[i].episodes[j]);
-                    console.log(episodeData.shows[i].episodes[j].season);
-                    console.log(episodeData.shows[i].episodes[j].number);
 
                     var episodeIndex = _.findIndex(user.tvShows[subbedShowIndex].episodes, {
                         'season': episodeData.shows[i].episodes[j].season,
