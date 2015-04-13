@@ -6,6 +6,7 @@ var request     = require('request');
 var trakt       = require('../app/services/trakt');
 var scraper     = require('../app/services/scraper');
 var scheduler   = require('../app/services/scheduler');
+var datehelper  = require('../app/services/datehelper');
 var validator   = require('validator');
 var sync        = require('sync');
 var async       = require('async');
@@ -75,6 +76,20 @@ function importShowEpisodes(userId, showId, cb) {
                     user.tvShows[index].episodes.push(seasonEpisodeArr[i]);
                 }
             }
+
+            var today = new Date();
+            var episodes = [];
+            var todayEpisodes =  _.filter(seasonEpisodeArr, function(e) {
+                return datehelper.sameDay(new Date(e.airdate), today);
+            });
+            for (var i = 0; i < todayEpisodes.length; i++) {
+                todayEpisodes[i].time_until = datehelper.minutesBetween(new Date(todayEpisodes[i].airdate), today);
+                todayEpisodes[i].show_id = showId;
+                console.log(todayEpisodes[i]);
+                episodes.push(todayEpisodes[i]);
+            }
+
+            console.log(episodes);
 
             user.save(function(err) {
                 if (err) {

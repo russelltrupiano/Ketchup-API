@@ -3,12 +3,13 @@ var auth    = require('../../config/auth');
 var async   = require('async');
 var Agenda  = require('agenda');
 var agenda  = new Agenda({db: {address: db.url}});
+var request = require('request');
 var notificationManager = require('./notifications');
+var datehelper = require('./datehelper');
 var Server  = require('../models/server');
 var request = require('request');
 var trakt   = require('./trakt');
 var _       = require('lodash');
-var request = require('request');
 
 agenda.define('schedule notification', function(job, done) {
     var data = job.attrs.data;
@@ -40,17 +41,6 @@ function schedule15MinNotification(show, subscribers) {
 
 }
 
-function sameDay(date1, date2) {
-    // Time difference in days
-    var timeDiff = (date1.getTime() - date2.getTime())/86400000;
-    return timeDiff >= 0.0 && timeDiff <= 2.0;
-}
-
-function minutesBetween(date1, date2) {
-    var timeDiff = (date1.getTime() - date2.getTime())/60000;
-    return timeDiff;
-}
-
 function getAllShowsWithin24h(subscriptions, cb) {
     var shows = [];
     var today = new Date();
@@ -65,15 +55,16 @@ function getAllShowsWithin24h(subscriptions, cb) {
 
             // array of episodes airing today
             var todayShows = _.filter(seasonEpisodeArr, function(e) {
-                return sameDay(new Date(e.airdate), today);
+                return datehelper.sameDay(new Date(e.airdate), today);
             });
 
             for (var i = 0; i < todayShows.length; i++) {
-                todayShows[i].time_until = minutesBetween(new Date(todayShows[i].airdate), today);
+                todayShows[i].time_until = datehelper.minutesBetween(new Date(todayShows[i].airdate), today);
                 // todayShows[i].time_until = 15 + j;
                 // j++;
                 todayShows[i].show_id = show.id;
                 shows.push(todayShows[i]);
+                console.log(todayShows[i]);
             }
 
             callback();
@@ -83,7 +74,7 @@ function getAllShowsWithin24h(subscriptions, cb) {
         if (err) {
             cb(null);
         }
-        console.log("SHOWS AIRING WITHIN 24 HOURS:\n" + shows);
+        console.log("SHOWS AIRING WITHIN 24 HOURS:");
         cb(shows);
     });
 }
@@ -119,7 +110,7 @@ function runSchedulingSetup(cb) {
 
 exports.start = function(cb) {
     agenda.schedule('1 second', 'check airings', null);
-    agenda.every('24 hours', 'check airings');
+    agenda.every('10 seconds', 'check airings');
     agenda.start();
 }
 
