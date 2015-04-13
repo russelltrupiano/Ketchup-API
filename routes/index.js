@@ -10,6 +10,7 @@ router.get('/', function(req, res) {
   res.render('index', { title: 'Ketchup API' });
 });
 
+// Test push notification route
 router.post('/push', function(req, res) {
     var title = req.body.title;
     var message = req.body.msg;

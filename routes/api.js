@@ -6,6 +6,7 @@ var request     = require('request');
 var trakt       = require('../app/services/trakt');
 var scraper     = require('../app/services/scraper');
 var scheduler   = require('../app/services/scheduler');
+var datehelper  = require('../app/services/datehelper');
 var validator   = require('validator');
 var sync        = require('sync');
 var async       = require('async');
@@ -75,6 +76,20 @@ function importShowEpisodes(userId, showId, cb) {
                     user.tvShows[index].episodes.push(seasonEpisodeArr[i]);
                 }
             }
+
+            var today = new Date();
+            var episodes = [];
+            var todayEpisodes =  _.filter(seasonEpisodeArr, function(e) {
+                return datehelper.sameDay(new Date(e.airdate), today);
+            });
+            for (var i = 0; i < todayEpisodes.length; i++) {
+                todayEpisodes[i].time_until = datehelper.minutesBetween(new Date(todayEpisodes[i].airdate), today);
+                todayEpisodes[i].show_id = showId;
+                console.log(todayEpisodes[i]);
+                episodes.push(todayEpisodes[i]);
+            }
+
+            console.log(episodes);
 
             user.save(function(err) {
                 if (err) {
@@ -350,7 +365,6 @@ module.exports = function(app, passport) {
         var userId = req.params.user_id;
 
         User.findById(userId, function(err, user) {
-            console.log("USER: " + user);
             return res.send({status: 200, shows: user.tvShows.sort(function(a, b) {
                 var nameA = a.title.toLowerCase(), nameB = b.title.toLowerCase()
                 if (nameA < nameB) return -1;
@@ -630,7 +644,7 @@ module.exports = function(app, passport) {
                         break;
                     }
 
-                    console.log("Updating episode data");
+                    console.log("Updating episode for " + user.local.email + ": " + user.tvShows[subbedShowIndex].title + " - " + user.tvShows[subbedShowIndex].episodes[episodeIndex].title + " => " + episodeData.shows[i].episodes[j].watched);
                     user.tvShows[subbedShowIndex].episodes[episodeIndex].watched = episodeData.shows[i].episodes[j].watched;
                 }
             }
