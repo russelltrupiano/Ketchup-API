@@ -10,6 +10,11 @@ var jsonSchema = {
             id: String,
             appIds: [ String ]
         }
+    ],
+    activeNotifications: [
+        {
+            id: String
+        }
     ]
 }
 

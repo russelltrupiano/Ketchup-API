@@ -365,7 +365,6 @@ module.exports = function(app, passport) {
         var userId = req.params.user_id;
 
         User.findById(userId, function(err, user) {
-            console.log("USER: " + user);
             return res.send({status: 200, shows: user.tvShows.sort(function(a, b) {
                 var nameA = a.title.toLowerCase(), nameB = b.title.toLowerCase()
                 if (nameA < nameB) return -1;
@@ -645,7 +644,7 @@ module.exports = function(app, passport) {
                         break;
                     }
 
-                    console.log("Updating episode data");
+                    console.log("Updating episode for " + user.local.email + ": " + user.tvShows[subbedShowIndex].title + " - " + user.tvShows[subbedShowIndex].episodes[episodeIndex].title + " => " + episodeData.shows[i].episodes[j].watched);
                     user.tvShows[subbedShowIndex].episodes[episodeIndex].watched = episodeData.shows[i].episodes[j].watched;
                 }
             }
