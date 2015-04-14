@@ -69,10 +69,9 @@ function importShowEpisodes(userId, showId, cb) {
                 return cb("Show is not subscribed to");
             }
 
-
             // Iterate through every episode
             for (var i = 0; i < seasonEpisodeArr.length; i++) {
-                if (!isEpisodeAdded(user.tvShows[index], seasonEpisodeArr[i])) {
+                if (!isEpisodeAdded(user.tvShows[index], seasonEpisodeArr[i]) && datehelper.isTodayOrBefore(seasonEpisodeArr[i].airdate)) {
                     user.tvShows[index].episodes.push(seasonEpisodeArr[i]);
                 }
             }

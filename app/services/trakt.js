@@ -41,7 +41,7 @@ function FullShowData(traktJsonObj) {
 function EpisodeData(traktJsonObj) {
     this.data = {
         'id': traktJsonObj.ids.trakt,
-        'airdate': traktJsonObj.first_aired,
+        'airdate': (new Date(traktJsonObj.first_aired)).toUTCString(),
         'season': traktJsonObj.season,
         'number': traktJsonObj.number,
         'title': traktJsonObj.title,
