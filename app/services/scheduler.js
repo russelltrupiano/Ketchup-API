@@ -26,9 +26,13 @@ agenda.define('show notification', function(job, done) {
             server.subscriptions = [];
         }
 
-        notificationManager.sendPushNotification(title, message, data.show.show_id, data.show.season, data.show.number, server.subscriptions);
+        var index = _.findIndex(server.subscriptions, {id: data.show.show_id});
+        if (index !== -1) {
+            notificationManager.sendPushNotification(title, message, data.show.show_id, data.show.season, data.show.number, server.subscriptions[index].appIds);
+            _.pull(server.activeNotifications, {id: data.show.show_id});
+        }
 
-        _.pull(server.activeNotifications, {id: data.show.show_id});
+
     });
 });
 
