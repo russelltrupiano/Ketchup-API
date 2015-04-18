@@ -65,7 +65,7 @@ function getNewAiringsIn24h(subscriptions, cb) {
     async.each(subscriptions, function(show, callback) {
         trakt.getAllEpisodesForShow(show.id, function(error, seasonEpisodeArr) {
             if (error) {
-                callback(error);
+                return callback(error);
             }
 
             // array of episodes airing today
@@ -85,7 +85,7 @@ function getNewAiringsIn24h(subscriptions, cb) {
         });
     }, function(err) {
         if (err) {
-            cb(null);
+            return cb(null);
         }
         console.log("SHOWS AIRING WITHIN 24 HOURS:");
         cb(shows);
@@ -106,6 +106,10 @@ function updateNotificationSchedule(cb) {
         }
         // For each show collect all shows that have airdates within 24 hours
         getNewAiringsIn24h(server.subscriptions, function(shows) {
+
+            if (shows == null) {
+                return;
+            }
 
             // For every show, construct notifs for all subscribers
             for (var i = 0; i < shows.length; i++) {

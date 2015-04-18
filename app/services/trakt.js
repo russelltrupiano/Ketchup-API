@@ -1,6 +1,7 @@
 var request = require('request');
 var _ = require('lodash');
 var auth = require('../../config/auth');
+var datehelper  = require('./datehelper');
 
 var baseUrl = "https://api-v2launch.trakt.tv";
 
@@ -230,6 +231,46 @@ exports.getPopularShows = function(cb) {
                 results.push(SearchResult(result[i].ids.slug, result[i].title, result[i].year, imageUrl));
             }
 
+
+            cb(null, results);
+        } else {
+            return cb("Request to Trakt failed", null);
+        }
+    });
+}
+
+exports.getTodayShows = function(cb) {
+    var url = baseUrl + "/calendars/all/shows/"+datehelper.buildYYYMMDDToday()+"/0?extended=images,full";
+    console.log(url);
+
+    request({url: url, headers: headers}, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+
+            var results = [];
+            var result = JSON.parse(response.body);
+
+            for (var i = 0; i < result.length; i++) {
+                // TODO: Country code should be sent by user
+                if (result[i].show.country === "us") {
+                    var imageUrl = '';
+                    if (typeof result[i].show.images != 'undefined' && result[i].show.images != null) {
+                        if (typeof result[i].show.images.poster != 'undefined' && result[i].show.images.poster != null) {
+                            if (result[i].show.images.poster.thumb != null) {
+                                imageUrl = result[i].show.images.poster.thumb;
+                            }
+                        }
+                    }
+                    var searchResult = SearchResult(result[i].show.ids.slug, result[i].show.title, (new Date()).getFullYear(), imageUrl);
+                    searchResult['rating'] = result[i].show.rating;
+                    results.push(searchResult);
+                }
+            }
+
+            results = _.sortBy(results, function(show) {
+                return -show.rating;
+            });
+            results = _.uniq(results, 'title');
+            results = results.slice(0, 20);
 
             cb(null, results);
         } else {

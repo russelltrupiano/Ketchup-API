@@ -14,3 +14,13 @@ exports.isTodayOrBefore = function(dateStr) {
     var d2 = new Date();
     return d1 <= d2 || module.exports.sameDay(d1, d2);
 }
+
+exports.buildYYYMMDDToday = function() {
+    var today = new Date();
+
+    var yyyy = today.getFullYear();
+    var mm = today.getMonth() + 1;
+    var dd = today.getDate();
+
+    return yyyy+"-"+mm+"-"+dd;
+}

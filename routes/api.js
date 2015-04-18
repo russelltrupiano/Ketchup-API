@@ -262,9 +262,23 @@ module.exports = function(app, passport) {
     });
 
     // Search for a show using the Trakt API
-    router.get('/popular', function(req, res) {
+    router.get('/shows/popular', function(req, res) {
 
         trakt.getPopularShows(function(error, result) {
+
+            if (error) {
+                console.log("api.js: " + error);
+                return res.sendStatus(503, error);
+            }
+
+            res.send({status: 200, result: result});
+        });
+    });
+
+    // Search for a show using the Trakt API
+    router.get('/shows/today', function(req, res) {
+
+        trakt.getTodayShows(function(error, result) {
 
             if (error) {
                 console.log("api.js: " + error);
